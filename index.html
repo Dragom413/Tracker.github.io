@@ -295,6 +295,9 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
+        provider.setCustomParameters({
+  prompt: 'select_account'
+});
         let usuarioActual = null;
 
         // Estructura Base de Datos en Memoria
