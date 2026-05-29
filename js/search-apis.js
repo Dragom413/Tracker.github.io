@@ -57,7 +57,7 @@ const SearchAPIs = (() => {
         if (!key) return [];
 
         const apiUrl = `https://comicvine.gamespot.com/api/issues/?api_key=${encodeURIComponent(key)}&format=json&filter=name:${encodeURIComponent(query)}&sort=name&limit=${MAX_RESULTS}`;
-        const url = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
+        const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
 
         const res = await fetch(url, { signal: abortController?.signal });
         if (!res.ok) return [];
@@ -214,18 +214,26 @@ const SearchAPIs = (() => {
                 if (category === 'comics') {
                     const source = apiSource || window.API_CONFIG.COMICS_SOURCE || 'anilist';
                     if (source === 'comicvine') {
+                        if (!window.API_CONFIG.COMICVINE_ENABLED) {
+                            console.warn('[MULTIMEDIA.io] Comic Vine no configurado. Ve a ⚙️ APIs.');
+                            return;
+                        }
                         results = await searchComicVine(query);
                     } else {
                         results = await searchAnilist(query);
                     }
                 } else if (category === 'peliculas' || category === 'series') {
-                    if (window.API_CONFIG.TMDB_ENABLED) {
-                        results = await searchTMDB(query, category);
+                    if (!window.API_CONFIG.TMDB_ENABLED) {
+                        console.warn('[MULTIMEDIA.io] TMDB no configurado. Ve a ⚙️ APIs para añadir tu key.');
+                        return;
                     }
+                    results = await searchTMDB(query, category);
                 } else if (category === 'videojuegos') {
-                    if (window.API_CONFIG.RAWG_ENABLED) {
-                        results = await searchRAWG(query);
+                    if (!window.API_CONFIG.RAWG_ENABLED) {
+                        console.warn('[MULTIMEDIA.io] RAWG no configurado. Ve a ⚙️ APIs para añadir tu key.');
+                        return;
                     }
+                    results = await searchRAWG(query);
                 }
 
                 const inputEl = document.getElementById('form-titulo');
