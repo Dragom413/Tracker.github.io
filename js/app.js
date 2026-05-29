@@ -40,6 +40,40 @@ const vocabulary = {
     videojuegos: { vistos: 'Sesiones/Horas', viendo: 'Jugando Actualmente', completado: 'Jugado', accion: '🕹️ Jugado', unidad: 'Progreso' }
 };
 
+const UI = {
+    navActive: 'px-3 py-2 rounded-xl text-xs md:text-sm font-medium bg-indigo-600 text-white transition shadow-md cursor-pointer',
+    navInactive: 'px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition cursor-pointer',
+    subTabActive: 'px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-200 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs shrink-0',
+    subTabInactive: 'px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition shrink-0',
+    card: 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl',
+    cardInner: 'bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1.5 rounded-xl text-center',
+    homeItem: 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl flex items-center gap-3 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition',
+    mediaCard: 'relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col justify-between hover:border-indigo-500/50 transition duration-200 shadow-md',
+    textPrimary: 'text-slate-800 dark:text-slate-200',
+    textMuted: 'text-slate-600 dark:text-slate-400',
+    textDim: 'text-slate-500',
+    borderDivider: 'border-slate-200 dark:border-slate-800',
+    input: 'bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800',
+    btnGhost: 'bg-slate-100 dark:bg-slate-950 hover:bg-indigo-600/20 text-indigo-400 border border-slate-200 dark:border-slate-800',
+    btnSurface: 'bg-slate-200 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950',
+    imgPlaceholder: 'bg-slate-200 dark:bg-slate-800',
+    overlay: 'bg-white/95 dark:bg-slate-950/95',
+    badge: 'bg-white/90 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800',
+    select: 'bg-white dark:bg-slate-950 text-[11px] border border-slate-200 dark:border-slate-800 rounded-lg p-1 max-w-[150px]'
+};
+
+function getChartThemeColors() {
+    const dark = document.documentElement.classList.contains('dark');
+    return {
+        grid: dark ? '#1e293b' : '#e2e8f0',
+        ticks: dark ? '#94a3b8' : '#64748b',
+    };
+}
+
+window.onThemeChange = () => {
+    if (currentTab === 'stats') renderStats();
+};
+
 // ==========================================
 // 1. LÓGICA DE AUTENTICACIÓN
 // ==========================================
@@ -229,9 +263,7 @@ window.switchTab = function(tab) {
     tabsList.forEach(t => {
         const btn = document.getElementById(`btn-nav-${t}`);
         if (btn) {
-            btn.className = (t === tab) 
-                ? "px-3 py-2 rounded-xl text-xs md:text-sm font-medium bg-indigo-600 text-white transition shadow-md cursor-pointer"
-                : "px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition cursor-pointer";
+            btn.className = (t === tab) ? UI.navActive : UI.navInactive;
         }
     });
 
@@ -303,7 +335,7 @@ window.switchStatsSubTab = function(subTab) {
     currentStatsSubTab = subTab;
     ['comics', 'series', 'peliculas', 'videojuegos'].forEach(st => {
         const btn = document.getElementById(`sub-btn-${st}`);
-        if(btn) btn.className = (st === subTab) ? "px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-indigo-400 font-bold shadow-xs shrink-0" : "px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 transition shrink-0";
+        if(btn) btn.className = (st === subTab) ? UI.subTabActive : UI.subTabInactive;
     });
     renderStats();
 };
@@ -496,26 +528,26 @@ function renderHomeView() {
         });
 
         if(activeList.length === 0) {
-            box.innerHTML = `<p class="text-xs text-slate-500 italic py-2 col-span-full">No tienes registros en curso en esta sección.</p>`;
+            box.innerHTML = `<p class="text-xs ${UI.textDim} italic py-2 col-span-full">No tienes registros en curso en esta sección.</p>`;
             return;
         }
 
         activeList.forEach(item => {
             const voc = vocabulary[cat];
-            const platform = item.plataforma ? `<span class="bg-indigo-950 border border-indigo-900 text-indigo-300 text-[9px] font-mono px-1 py-0.5 rounded">${item.plataforma}</span>` : '';
+            const platform = item.plataforma ? `<span class="bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-300 text-[9px] font-mono px-1 py-0.5 rounded">${item.plataforma}</span>` : '';
             const labelInfo = (cat === 'videojuegos') ? `Estado: <b>${item.estado}</b>` : `${voc.vistos}: <b>${item.vistos}</b>`;
             
             let actionBtnText = voc.accion;
             if (cat === 'videojuegos' && item.estado === 'Jugando') actionBtnText = '🕹️ Jugado';
 
             const div = document.createElement('div');
-            div.className = "bg-slate-900 border border-slate-800 p-3 rounded-xl flex items-center gap-3 shadow-sm hover:border-slate-700 transition";
+            div.className = UI.homeItem;
             div.innerHTML = `
-                <img src="${item.portada}" class="w-10 h-14 object-cover rounded-md bg-slate-800 shrink-0">
+                <img src="${item.portada}" class="w-10 h-14 object-cover rounded-md ${UI.imgPlaceholder} shrink-0">
                 <div class="flex-1 min-w-0">
-                    <h4 class="text-xs font-bold text-slate-200 truncate" title="${item.titulo}">${item.titulo}</h4>
-                    <div class="flex items-center gap-2 mt-1">${platform}<p class="text-[10px] text-slate-400 font-mono">${labelInfo}</p></div>
-                    <button onclick="incrementCapitulo(${item.id}, '${cat}')" class="mt-2 w-full bg-slate-950 hover:bg-indigo-600/20 text-indigo-400 border border-slate-800 text-[10px] py-1 rounded-lg font-mono transition cursor-pointer">${actionBtnText}</button>
+                    <h4 class="text-xs font-bold ${UI.textPrimary} truncate" title="${item.titulo}">${item.titulo}</h4>
+                    <div class="flex items-center gap-2 mt-1">${platform}<p class="text-[10px] ${UI.textMuted} font-mono">${labelInfo}</p></div>
+                    <button onclick="incrementCapitulo(${item.id}, '${cat}')" class="mt-2 w-full ${UI.btnGhost} text-[10px] py-1 rounded-lg font-mono transition cursor-pointer">${actionBtnText}</button>
                 </div>
             `;
             box.appendChild(div);
@@ -588,9 +620,9 @@ window.renderCollection = function() {
 
         if (currentTab === 'peliculas') {
             if (item.estado === 'Visto') { tagEstado = 'Visto'; colorTag = 'bg-purple-600/95 text-white'; } 
-            else { tagEstado = 'Por ver'; colorTag = 'bg-slate-700 text-slate-200'; }
+            else { tagEstado = 'Por ver'; colorTag = 'bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-slate-200'; }
         } else if (currentTab === 'videojuegos') {
-            if (item.estado === 'Por Jugar') { tagEstado = 'Por Jugar'; colorTag = 'bg-slate-700 text-slate-300'; }
+            if (item.estado === 'Por Jugar') { tagEstado = 'Por Jugar'; colorTag = 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'; }
             else if (item.estado === 'Jugando') { tagEstado = 'Jugando'; colorTag = 'bg-amber-500 text-slate-950 font-bold'; }
             else { tagEstado = 'Jugado'; colorTag = 'bg-purple-600 text-white'; }
         } else {
@@ -602,19 +634,19 @@ window.renderCollection = function() {
                 colorTag = 'bg-blue-500'; 
             } else { 
                 tagEstado = 'En Cola'; 
-                colorTag = 'bg-slate-700 text-slate-300'; 
+                colorTag = 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'; 
             }
         }
 
-        let rating = (item.rating && item.rating !== "0") ? `<span class="absolute top-1.5 left-1.5 bg-slate-950/80 backdrop-blur-md text-amber-400 text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center">⭐ ${item.rating}</span>` : '';
-        const favActive = item.favorito ? 'text-amber-400' : 'text-slate-400';
+        let rating = (item.rating && item.rating !== "0") ? `<span class="absolute top-1.5 left-1.5 ${UI.badge} backdrop-blur-md text-amber-400 text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center">⭐ ${item.rating}</span>` : '';
+        const favActive = item.favorito ? 'text-amber-400' : 'text-slate-500 dark:text-slate-400';
         const favBadge = item.favorito ? `<span class="absolute top-1.5 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 text-[8px] font-extrabold px-1.5 rounded shadow-sm">FAV</span>` : '';
-        const platform = item.plataforma ? `<span class="absolute bottom-1.5 left-1.5 bg-slate-950/90 text-indigo-300 text-[9px] font-mono px-1.5 py-0.5 rounded border border-slate-800">${item.plataforma}</span>` : '';
-        const anioBadge = item.anio ? `<span class="absolute bottom-1.5 right-1.5 bg-slate-950/80 text-slate-300 text-[9px] font-mono px-1.5 py-0.5 rounded border border-slate-800">${item.anio}</span>` : '';
+        const platform = item.plataforma ? `<span class="absolute bottom-1.5 left-1.5 ${UI.badge} text-indigo-600 dark:text-indigo-300 text-[9px] font-mono px-1.5 py-0.5 rounded">${item.plataforma}</span>` : '';
+        const anioBadge = item.anio ? `<span class="absolute bottom-1.5 right-1.5 bg-white/80 dark:bg-slate-950/80 text-slate-600 dark:text-slate-300 text-[9px] font-mono px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-800">${item.anio}</span>` : '';
         const noteIndicator = (item.notas || item.resena) ? `<span class="text-indigo-400 ml-1 text-[10px]" title="Tiene notas guardadas">📝</span>` : '';
 
         const card = document.createElement('div');
-        card.className = "relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 flex flex-col justify-between hover:border-indigo-500/50 transition duration-200 shadow-md";
+        card.className = UI.mediaCard;
         
         let actionBtnText = voc.accion;
         if(currentTab === 'videojuegos' && item.estado === 'Por Jugar') actionBtnText = '🎮 Empezar Juego';
@@ -626,39 +658,39 @@ window.renderCollection = function() {
             actionBtnText = '🔄 Reiniciar Avance';
         }
 
-        let actionBtn = `<button onclick="incrementCapitulo(${item.id})" class="mt-2 w-full bg-slate-950 hover:bg-indigo-600/20 text-indigo-400 font-medium text-[11px] py-1.5 rounded-xl border border-slate-800 transition font-mono cursor-pointer">${actionBtnText}</button>`;
+        let actionBtn = `<button onclick="incrementCapitulo(${item.id})" class="mt-2 w-full ${UI.btnGhost} font-medium text-[11px] py-1.5 rounded-xl transition font-mono cursor-pointer">${actionBtnText}</button>`;
 
         let footerInfo = '';
         if(currentTab === 'comics' || currentTab === 'series') {
             let resta = (item.totales > 0 && item.vistos >= item.totales) ? 0 : (item.totales > 0 ? item.totales - item.vistos : '???');
-            footerInfo = `<div class="flex justify-between text-[10px] text-slate-400 font-mono"><span>Prog: <b>${item.vistos}</b></span><span>Faltan: <b>${resta}</b></span></div>`;
+            footerInfo = `<div class="flex justify-between text-[10px] ${UI.textMuted} font-mono"><span>Prog: <b>${item.vistos}</b></span><span>Faltan: <b>${resta}</b></span></div>`;
         } else if(currentTab === 'videojuegos') {
-            footerInfo = `<div class="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sesiones/Hrs: <b>${item.vistos}</b></span><span>Meta: <b>${item.totales || 'Libre'}</b></span></div>`;
+            footerInfo = `<div class="flex justify-between text-[10px] ${UI.textMuted} font-mono"><span>Sesiones/Hrs: <b>${item.vistos}</b></span><span>Meta: <b>${item.totales || 'Libre'}</b></span></div>`;
         } else {
-            footerInfo = `<div class="text-[10px] text-slate-500 font-mono italic text-center">Película Única</div>`;
+            footerInfo = `<div class="text-[10px] ${UI.textDim} font-mono italic text-center">Película Única</div>`;
         }
 
         card.innerHTML = `
-            <div class="aspect-[3/4] bg-slate-800 relative overflow-hidden">
+            <div class="aspect-[3/4] ${UI.imgPlaceholder} relative overflow-hidden">
                 <img src="${item.portada}" class="w-full h-full object-cover">
                 ${rating} ${favBadge} ${platform} ${anioBadge}
                 <span class="absolute top-1.5 right-1.5 ${colorTag} text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow-md">${tagEstado}</span>
                 
-                <button onclick="toggleCardMenu(${item.id})" class="absolute bottom-1.5 right-1.5 bg-slate-950/90 border border-slate-800 px-2 py-0.5 rounded-lg text-[10px] text-slate-200 hover:bg-slate-800 transition z-10 cursor-pointer">⚙️ Menú</button>
+                <button onclick="toggleCardMenu(${item.id})" class="absolute bottom-1.5 right-1.5 ${UI.badge} px-2 py-0.5 rounded-lg text-[10px] ${UI.textPrimary} hover:bg-slate-100 dark:hover:bg-slate-800 transition z-10 cursor-pointer">⚙️ Menú</button>
 
-                <div id="menu-panel-${item.id}" class="hidden absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center space-y-2 px-3 z-20">
-                    <button onclick="toggleCardMenu(${item.id})" class="absolute top-2 right-2 text-slate-400 hover:text-white text-xs p-1 cursor-pointer">❌ Cerrar</button>
+                <div id="menu-panel-${item.id}" class="hidden absolute inset-0 ${UI.overlay} flex flex-col items-center justify-center space-y-2 px-3 z-20">
+                    <button onclick="toggleCardMenu(${item.id})" class="absolute top-2 right-2 ${UI.textMuted} hover:text-slate-900 dark:hover:text-white text-xs p-1 cursor-pointer">❌ Cerrar</button>
                     <div class="flex space-x-1 w-full pt-4">
-                        <button onclick="openModal('edit', ${item.id})" class="flex-1 py-1.5 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-xl text-[11px] font-semibold text-amber-400 cursor-pointer">Editar</button>
-                        <button onclick="deleteMedia(${item.id})" class="flex-1 py-1.5 bg-slate-800 hover:bg-rose-600 hover:text-white rounded-xl text-[11px] font-semibold text-rose-500 cursor-pointer">Borrar</button>
+                        <button onclick="openModal('edit', ${item.id})" class="flex-1 py-1.5 ${UI.btnSurface} rounded-xl text-[11px] font-semibold text-amber-600 dark:text-amber-400 cursor-pointer">Editar</button>
+                        <button onclick="deleteMedia(${item.id})" class="flex-1 py-1.5 ${UI.btnSurface} hover:bg-rose-600 hover:text-white rounded-xl text-[11px] font-semibold text-rose-500 cursor-pointer">Borrar</button>
                     </div>
-                    <button onclick="toggleFavorito(${item.id})" class="w-full py-1.5 bg-slate-800 text-[11px] font-bold rounded-xl ${favActive} cursor-pointer">❤️ Favorito</button>
+                    <button onclick="toggleFavorito(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl ${favActive} cursor-pointer">❤️ Favorito</button>
                 </div>
             </div>
             <div class="p-3 flex flex-col justify-between flex-1 gap-1">
                 <div>
-                    <h4 class="font-bold text-xs truncate text-slate-200" title="${item.titulo}">${item.titulo}${noteIndicator}</h4>
-                    <p class="text-[10px] text-slate-400 truncate">${item.genero || 'Sin género'} • <span class="text-slate-500">${item.subtipo || 'General'}</span></p>
+                    <h4 class="font-bold text-xs truncate ${UI.textPrimary}" title="${item.titulo}">${item.titulo}${noteIndicator}</h4>
+                    <p class="text-[10px] ${UI.textMuted} truncate">${item.genero || 'Sin género'} • <span class="${UI.textDim}">${item.subtipo || 'General'}</span></p>
                 </div>
                 <div class="mt-1">
                     ${footerInfo}
@@ -678,12 +710,12 @@ function renderListsView() {
     });
 
     const favDiv = document.createElement('div');
-    favDiv.className = "bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl";
-    let fHtml = `<div class="flex justify-between items-center border-b border-slate-800 pb-2"><h3 class="text-sm font-bold text-amber-400">❤️ Mis Favoritos Globales</h3><span class="text-xs bg-amber-400/10 text-amber-400 px-2 rounded">${allFavs.length}</span></div>`;
-    if(!allFavs.length) fHtml += `<p class="text-xs text-slate-500">Sin favoritos mapeados.</p>`;
+    favDiv.className = UI.card;
+    let fHtml = `<div class="flex justify-between items-center border-b ${UI.borderDivider} pb-2"><h3 class="text-sm font-bold text-amber-400">❤️ Mis Favoritos Globales</h3><span class="text-xs bg-amber-400/10 text-amber-400 px-2 rounded">${allFavs.length}</span></div>`;
+    if(!allFavs.length) fHtml += `<p class="text-xs ${UI.textDim}">Sin favoritos mapeados.</p>`;
     else {
         fHtml += `<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">`;
-        allFavs.forEach(f => { fHtml += `<div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl text-center"><img src="${f.portada}" class="aspect-[3/4] w-full object-cover rounded-lg"><p class="text-[10px] truncate text-slate-300 mt-1">${f.titulo}</p></div>`; });
+        allFavs.forEach(f => { fHtml += `<div class="${UI.cardInner}"><img src="${f.portada}" class="aspect-[3/4] w-full object-cover rounded-lg"><p class="text-[10px] truncate text-slate-700 dark:text-slate-300 mt-1">${f.titulo}</p></div>`; });
         fHtml += `</div>`;
     }
     favDiv.innerHTML = fHtml; wrapper.appendChild(favDiv);
@@ -699,15 +731,15 @@ function renderListsView() {
 
     mediaData.customLists.forEach(list => {
         const listDiv = document.createElement('div');
-        listDiv.className = "bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl";
-        let itemsHtml = (!list.items.length) ? `<p class="text-xs text-slate-500">Lista vacía.</p>` : `<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">`;
+        listDiv.className = UI.card;
+        let itemsHtml = (!list.items.length) ? `<p class="text-xs ${UI.textDim}">Lista vacía.</p>` : `<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">`;
         list.items.forEach(ref => {
             const actualItem = mediaData[ref.type]?.find(i => i.id === ref.id);
-            if(actualItem) itemsHtml += `<div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl text-center relative group"><img src="${actualItem.portada}" class="aspect-[3/4] w-full object-cover rounded-lg"><button onclick="removeItemFromList('${list.id}', '${ref.type}', ${ref.id})" class="absolute inset-1.5 bg-rose-950/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition text-[10px] font-bold cursor-pointer">Quitar</button><p class="text-[10px] truncate text-slate-300 mt-1">${actualItem.titulo}</p></div>`;
+            if(actualItem) itemsHtml += `<div class="${UI.cardInner} relative group"><img src="${actualItem.portada}" class="aspect-[3/4] w-full object-cover rounded-lg"><button onclick="removeItemFromList('${list.id}', '${ref.type}', ${ref.id})" class="absolute inset-1.5 bg-rose-950/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition text-[10px] font-bold cursor-pointer">Quitar</button><p class="text-[10px] truncate text-slate-700 dark:text-slate-300 mt-1">${actualItem.titulo}</p></div>`;
         });
         if(list.items.length) itemsHtml += `</div>`;
 
-        listDiv.innerHTML = `<div class="flex justify-between items-center border-b border-slate-800 pb-2"><div class="flex items-center gap-2"><h4 class="text-xs md:text-sm font-bold text-slate-200">📋 ${list.name}</h4><button onclick="deleteCustomList('${list.id}')" class="text-[10px] text-rose-500 cursor-pointer">Eliminar</button></div><select onchange="addItemToList('${list.id}', this)" class="bg-slate-950 text-[11px] border border-slate-800 rounded-lg p-1 max-w-[150px]">${optionsHtml}</select></div>${itemsHtml}`;
+        listDiv.innerHTML = `<div class="flex justify-between items-center border-b ${UI.borderDivider} pb-2"><div class="flex items-center gap-2"><h4 class="text-xs md:text-sm font-bold ${UI.textPrimary}">📋 ${list.name}</h4><button onclick="deleteCustomList('${list.id}')" class="text-[10px] text-rose-500 cursor-pointer">Eliminar</button></div><select onchange="addItemToList('${list.id}', this)" class="${UI.select}">${optionsHtml}</select></div>${itemsHtml}`;
         wrapper.appendChild(listDiv);
     });
 }
@@ -756,37 +788,44 @@ function renderStats() {
     if (chartR) chartR.destroy();
     if (chartA) chartA.destroy();
 
+    const chartColors = getChartThemeColors();
+    const legendOpts = { position: 'bottom', labels: { color: chartColors.ticks, font: { size: 9 } } };
+    const barScaleOpts = {
+        y: { grid: { color: chartColors.grid }, ticks: { color: chartColors.ticks, stepSize: 1 } },
+        x: { ticks: { color: chartColors.ticks } }
+    };
+
     const gLabels = Object.keys(generoMap);
     chartC = new Chart(document.getElementById('chartConcepto'), {
         type: 'doughnut',
         data: { labels: gLabels.length ? gLabels : ['Sin registros'], datasets: [{ data: gLabels.length ? Object.values(generoMap) : [1], backgroundColor: ['#6366f1', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 9 } } } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: legendOpts } }
     });
 
     const sLabels = Object.keys(subtipoMap);
     chartS = new Chart(document.getElementById('chartSubtipo'), {
         type: 'doughnut',
         data: { labels: sLabels.length ? sLabels : ['Sin datos'], datasets: [{ data: sLabels.length ? Object.values(subtipoMap) : [1], backgroundColor: ['#06b6d4', '#ec4899', '#34d399', '#f43f5e', '#a855f7'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 9 } } } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: legendOpts } }
     });
 
     const labelEstadoCurso = currentStatsSubTab === 'peliculas' ? 'Por ver' : 'En Curso';
     chartE = new Chart(document.getElementById('chartEstado'), {
         type: 'bar',
         data: { labels: [labelEstadoCurso, 'Completados', 'Pendientes'], datasets: [{ data: [estadoCounts['En Curso'], estadoCounts['Completados'], estadoCounts['Pendientes']], backgroundColor: ['#3b82f6', '#a855f7', '#64748b'], borderRadius: 6 }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { ticks: { color: '#94a3b8' } } }, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: barScaleOpts, plugins: { legend: { display: false } } }
     });
 
     chartR = new Chart(document.getElementById('chartRating'), {
         type: 'bar',
         data: { labels: starLabels.map(l => `${l} ⭐`), datasets: [{ label: 'Obras', data: starLabels.map(l => ratingMap[l]), backgroundColor: '#f59e0b', borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { ticks: { color: '#94a3b8', font: { size: 9 } } } }, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { ...barScaleOpts, x: { ticks: { color: chartColors.ticks, font: { size: 9 } } } }, plugins: { legend: { display: false } } }
     });
 
     const sortedYears = Object.keys(anioMap).sort((a, b) => parseInt(a) - parseInt(b));
     chartA = new Chart(document.getElementById('chartAnios'), {
         type: 'bar',
         data: { labels: sortedYears.length ? sortedYears : ['Sin fechas'], datasets: [{ label: 'Lanzamientos', data: sortedYears.length ? sortedYears.map(y => anioMap[y]) : [0], backgroundColor: '#10b981', borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { ticks: { color: '#94a3b8', font: { size: 10 } } } }, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { ...barScaleOpts, x: { ticks: { color: chartColors.ticks, font: { size: 10 } } } }, plugins: { legend: { display: false } } }
     });
 }

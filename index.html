@@ -1,20 +1,27 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Media Tracker Pro (Nube)</title>
     <script src="js/env.js"></script>
+    <script src="js/theme.js"></script>
     <link rel="stylesheet" href="css/styles.css">
+    <style type="text/tailwindcss">
+        @custom-variant dark (&:where(.dark, .dark *));
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
 
-    <div id="auth-screen" class="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center z-50 text-center space-y-6 px-4">
+    <div id="auth-screen" class="fixed inset-0 bg-slate-100 dark:bg-slate-950 flex flex-col items-center justify-center z-50 text-center space-y-6 px-4">
+        <button onclick="toggleTheme()" aria-label="Cambiar tema" class="absolute top-4 right-4 px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
+            <span class="theme-toggle-icon">☀️</span>
+        </button>
         <span class="text-6xl">📊</span>
         <h1 class="text-3xl font-bold tracking-wider text-indigo-400 font-mono">MULTIMEDIA.io</h1>
-        <p class="text-sm text-slate-400 max-w-sm leading-relaxed">Inicia sesión para sincronizar y proteger tu colección multimedia en la nube.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400 max-w-sm leading-relaxed">Inicia sesión para sincronizar y proteger tu colección multimedia en la nube.</p>
         <button onclick="iniciarSesion()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-3 px-6 rounded-xl transition shadow-lg cursor-pointer">
             Inicia Sesión con Google
         </button>
@@ -22,7 +29,7 @@
 
     <div id="app-container" class="hidden flex-col min-h-screen">
         
-        <header class="bg-slate-900 border-b border-slate-800 px-4 py-4 md:px-6 flex flex-col lg:flex-row items-center justify-between sticky top-0 z-40 shadow-md gap-4">
+        <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-4 md:px-6 flex flex-col lg:flex-row items-center justify-between sticky top-0 z-40 shadow-md gap-4">
             <div onclick="switchTab('home')" class="flex items-center space-x-2 cursor-pointer shrink-0">
                 <span class="text-xl">📊</span>
                 <h1 class="text-xl font-bold tracking-wider text-indigo-400 font-mono">MULTIMEDIA.io</h1>
@@ -30,14 +37,17 @@
             
             <div class="flex flex-wrap items-center justify-center lg:justify-end gap-2 w-full lg:w-auto">
                 <button onclick="switchTab('home')" id="btn-nav-home" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium transition shadow-md">🏠 Inicio</button>
-                <button onclick="switchTab('comics')" id="btn-nav-comics" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition">📚 Cómics & Manga</button>
-                <button onclick="switchTab('series')" id="btn-nav-series" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition">📺 Series & Anime</button>
-                <button onclick="switchTab('peliculas')" id="btn-nav-peliculas" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition">🎬 Películas</button>
-                <button onclick="switchTab('videojuegos')" id="btn-nav-videojuegos" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition">🎮 Videojuegos</button>
-                <button onclick="switchTab('lists')" id="btn-nav-lists" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition">📋 Mis Listas</button>
-                <button onclick="switchTab('stats')" id="btn-nav-stats" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition">📊 Estadísticas</button>
-                <div class="w-px h-6 bg-slate-700 mx-1 hidden lg:block"></div>
-                <button onclick="cerrarSesion()" class="px-3 py-2 rounded-xl text-[10px] md:text-xs font-bold text-rose-400 hover:bg-rose-950 border border-rose-900/50 transition cursor-pointer">Salir</button>
+                <button onclick="switchTab('comics')" id="btn-nav-comics" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition">📚 Cómics & Manga</button>
+                <button onclick="switchTab('series')" id="btn-nav-series" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition">📺 Series & Anime</button>
+                <button onclick="switchTab('peliculas')" id="btn-nav-peliculas" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition">🎬 Películas</button>
+                <button onclick="switchTab('videojuegos')" id="btn-nav-videojuegos" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition">🎮 Videojuegos</button>
+                <button onclick="switchTab('lists')" id="btn-nav-lists" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition">📋 Mis Listas</button>
+                <button onclick="switchTab('stats')" id="btn-nav-stats" class="px-3 py-2 rounded-xl text-xs md:text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition">📊 Estadísticas</button>
+                <div class="w-px h-6 bg-slate-300 dark:bg-slate-700 mx-1 hidden lg:block"></div>
+                <button onclick="toggleTheme()" aria-label="Cambiar tema" class="px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
+                    <span class="theme-toggle-icon">☀️</span>
+                </button>
+                <button onclick="cerrarSesion()" class="px-3 py-2 rounded-xl text-[10px] md:text-xs font-bold text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 border border-rose-300 dark:border-rose-900/50 transition cursor-pointer">Salir</button>
             </div>
         </header>
 
@@ -45,37 +55,37 @@
             
             <div id="view-home" class="space-y-8">
                 <div>
-                    <h2 class="text-2xl font-bold text-slate-100 tracking-tight">Panel Inicial 👋</h2>
-                    <p class="text-xs text-slate-400 mt-1">Vistazo rápido a tus obras en curso y herramientas de sistema.</p>
+                    <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Panel Inicial 👋</h2>
+                    <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">Vistazo rápido a tus obras en curso y herramientas de sistema.</p>
                 </div>
 
                 <div class="space-y-6">
-                    <div class="bg-slate-900/40 p-4 md:p-5 rounded-2xl border border-slate-900 space-y-4">
+                    <div class="bg-slate-50 dark:bg-slate-900/40 p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-900 space-y-4">
                         <h3 class="text-sm font-bold text-amber-400 flex items-center gap-2">🎮 Jugando Actualmente</h3>
                         <div id="home-games-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
                     </div>
 
-                    <div class="bg-slate-900/40 p-4 md:p-5 rounded-2xl border border-slate-900 space-y-4">
+                    <div class="bg-slate-50 dark:bg-slate-900/40 p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-900 space-y-4">
                         <h3 class="text-sm font-bold text-blue-400 flex items-center gap-2">📺 Viendo Actualmente</h3>
                         <div id="home-series-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
                     </div>
 
-                    <div class="bg-slate-900/40 p-4 md:p-5 rounded-2xl border border-slate-900 space-y-4">
+                    <div class="bg-slate-50 dark:bg-slate-900/40 p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-900 space-y-4">
                         <h3 class="text-sm font-bold text-indigo-400 flex items-center gap-2">📚 Leyendo Actualmente</h3>
                         <div id="home-comics-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
                     </div>
                 </div>
 
-                <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl mt-12">
+                <div class="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl mt-12">
                     <div>
-                        <h3 class="text-sm font-bold text-slate-200">💾 Respaldo y Migración (.json)</h3>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Tus datos se guardan en Firebase, pero puedes descargar una copia física aquí.</p>
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">💾 Respaldo y Migración (.json)</h3>
+                        <p class="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">Tus datos se guardan en Firebase, pero puedes descargar una copia física aquí.</p>
                     </div>
                     <div class="flex flex-wrap gap-3">
-                        <button onclick="exportDataToJSON()" class="bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md flex items-center gap-2 cursor-pointer">
+                        <button onclick="exportDataToJSON()" class="bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md flex items-center gap-2 cursor-pointer text-white">
                             📥 Exportar Backup
                         </button>
-                        <label class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition cursor-pointer flex items-center gap-2 text-slate-200">
+                        <label class="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition cursor-pointer flex items-center gap-2 text-slate-800 dark:text-slate-200">
                             📂 Forzar Importación a la Nube
                             <input type="file" id="import-file-input" accept=".json" onchange="importDataFromJSON(event)" class="hidden">
                         </label>
@@ -85,51 +95,51 @@
             
             <div id="view-collection" class="hidden space-y-6">
                 <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" id="stats-header-grid">
-                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl" id="box-stat-vistos">
-                        <p class="text-[10px] md:text-xs font-semibold text-slate-400 uppercase tracking-wider" id="score-vistos-title">Progreso</p>
+                    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl" id="box-stat-vistos">
+                        <p class="text-[10px] md:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider" id="score-vistos-title">Progreso</p>
                         <p class="text-2xl md:text-3xl font-bold text-indigo-400 mt-1" id="stat-vistos">0</p>
                     </div>
-                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl" id="box-stat-leyendo">
-                        <p class="text-[10px] md:text-xs font-semibold text-slate-400 uppercase tracking-wider" id="score-leyendo-title">En Curso</p>
+                    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl" id="box-stat-leyendo">
+                        <p class="text-[10px] md:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider" id="score-leyendo-title">En Curso</p>
                         <p class="text-2xl md:text-3xl font-bold text-amber-400 mt-1" id="stat-leyendo">0</p>
                     </div>
-                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl" id="box-stat-pendientes">
-                        <p class="text-[10px] md:text-xs font-semibold text-slate-400 uppercase tracking-wider" id="score-pendientes-title">Pendientes</p>
+                    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl" id="box-stat-pendientes">
+                        <p class="text-[10px] md:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider" id="score-pendientes-title">Pendientes</p>
                         <p class="text-2xl md:text-3xl font-bold text-emerald-400 mt-1" id="stat-pendientes">0</p>
                     </div>
-                    <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl" id="box-stat-completados">
-                        <p class="text-[10px] md:text-xs font-semibold text-slate-400 uppercase tracking-wider" id="score-completados-title">Finalizados</p>
+                    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl" id="box-stat-completados">
+                        <p class="text-[10px] md:text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider" id="score-completados-title">Finalizados</p>
                         <p class="text-2xl md:text-3xl font-bold text-purple-400 mt-1" id="stat-completados">0</p>
                     </div>
                 </section>
 
-                <section class="bg-slate-900 p-3 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:flex-wrap gap-3 items-start md:items-center shadow-md">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0"><span class="text-lg">🔍</span> Filtros:</span>
+                <section class="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:flex-wrap gap-3 items-start md:items-center shadow-md">
+                    <span class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0"><span class="text-lg">🔍</span> Filtros:</span>
                     
-                    <input type="text" id="filter-search" oninput="renderCollection()" placeholder="Buscar por título..." class="bg-slate-950 text-xs text-slate-200 border border-slate-800 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-48 placeholder:text-slate-600">
+                    <input type="text" id="filter-search" oninput="renderCollection()" placeholder="Buscar por título..." class="bg-white dark:bg-slate-950 text-xs text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-48 placeholder:text-slate-400 dark:placeholder:text-slate-600">
 
-                    <select id="filter-estado" onchange="renderCollection()" class="bg-slate-950 text-[11px] text-slate-200 border border-slate-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-auto">
+                    <select id="filter-estado" onchange="renderCollection()" class="bg-white dark:bg-slate-950 text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-auto">
                         <option value="">Estado: Todos</option>
                     </select>
-                    <select id="filter-genero" onchange="renderCollection()" class="bg-slate-950 text-[11px] text-slate-200 border border-slate-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-auto">
+                    <select id="filter-genero" onchange="renderCollection()" class="bg-white dark:bg-slate-950 text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-auto">
                         <option value="">Género: Todos</option>
                     </select>
-                    <select id="filter-subtipo" onchange="renderCollection()" class="bg-slate-950 text-[11px] text-slate-200 border border-slate-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-auto">
+                    <select id="filter-subtipo" onchange="renderCollection()" class="bg-white dark:bg-slate-950 text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-auto">
                         <option value="">Subtipo: Todos</option>
                     </select>
-                    <select id="filter-completado" onchange="renderCollection()" class="bg-slate-950 text-[11px] text-slate-200 border border-slate-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-auto">
+                    <select id="filter-completado" onchange="renderCollection()" class="bg-white dark:bg-slate-950 text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 w-full md:w-auto">
                         <option value="">Avance: Todos</option>
                         <option value="si">Solo Completados</option>
                         <option value="no">Solo No Completados</option>
                     </select>
                     
-                    <button onclick="resetFilters()" class="text-[10px] text-slate-400 hover:text-white transition underline md:ml-auto cursor-pointer">Limpiar Filtros</button>
+                    <button onclick="resetFilters()" class="text-[10px] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition underline md:ml-auto cursor-pointer">Limpiar Filtros</button>
                 </section>
 
                 <section class="space-y-4">
                     <div class="flex justify-between items-center gap-2">
-                        <h2 class="text-lg md:text-xl font-bold text-slate-200 tracking-wide" id="gallery-title">Mi Colección</h2>
-                        <button onclick="openModal('add')" class="bg-indigo-600 hover:bg-indigo-500 text-xs md:text-sm font-medium px-4 py-2 rounded-xl transition shadow-lg shrink-0 cursor-pointer">+ Añadir Registro</button>
+                        <h2 class="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-200 tracking-wide" id="gallery-title">Mi Colección</h2>
+                        <button onclick="openModal('add')" class="bg-indigo-600 hover:bg-indigo-500 text-xs md:text-sm font-medium px-4 py-2 rounded-xl transition shadow-lg shrink-0 cursor-pointer text-white">+ Añadir Registro</button>
                     </div>
                     <p id="filter-count" class="text-xs text-slate-500 font-mono hidden"></p>
                     <div id="media-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"></div>
@@ -137,20 +147,20 @@
             </div>
 
             <div id="view-lists" class="hidden space-y-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
                     <div>
-                        <h2 class="text-xl font-bold text-slate-200 tracking-wide">Mis Listas Personalizadas</h2>
-                        <p class="text-xs text-slate-400">Agrupa tus registros sin restricciones de categoría.</p>
+                        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-200 tracking-wide">Mis Listas Personalizadas</h2>
+                        <p class="text-xs text-slate-600 dark:text-slate-400">Agrupa tus registros sin restricciones de categoría.</p>
                     </div>
-                    <button onclick="createCustomList()" class="bg-emerald-600 hover:bg-emerald-500 text-xs font-medium px-4 py-2 rounded-xl transition shadow-lg self-start sm:self-auto cursor-pointer">⚡ Crear Nueva Lista</button>
+                    <button onclick="createCustomList()" class="bg-emerald-600 hover:bg-emerald-500 text-xs font-medium px-4 py-2 rounded-xl transition shadow-lg self-start sm:self-auto cursor-pointer text-white">⚡ Crear Nueva Lista</button>
                 </div>
                 <div id="lists-wrapper" class="space-y-6"></div>
             </div>
 
             <div id="view-stats" class="hidden space-y-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
-                    <h2 class="text-xl font-bold text-slate-200 tracking-wide">Paneles Analíticos</h2>
-                    <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto max-w-full">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-200 tracking-wide">Paneles Analíticos</h2>
+                    <div class="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-x-auto max-w-full">
                         <button onclick="switchStatsSubTab('comics')" id="sub-btn-comics" class="px-3 py-1.5 text-xs font-medium rounded-lg transition shrink-0 cursor-pointer">📚 Cómics</button>
                         <button onclick="switchStatsSubTab('series')" id="sub-btn-series" class="px-3 py-1.5 text-xs font-medium rounded-lg transition shrink-0 cursor-pointer">📺 Series</button>
                         <button onclick="switchStatsSubTab('peliculas')" id="sub-btn-peliculas" class="px-3 py-1.5 text-xs font-medium rounded-lg transition shrink-0 cursor-pointer">🎬 Pelis</button>
@@ -159,24 +169,24 @@
                 </div>
 
                 <section class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4" id="chart-title-1">Distribución temática</h3>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col justify-between">
+                        <h3 class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4" id="chart-title-1">Distribución temática</h3>
                         <div class="h-64 flex items-center justify-center"><canvas id="chartConcepto"></canvas></div>
                     </div>
-                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4" id="chart-title-2">Distribución por Subtipo</h3>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col justify-between">
+                        <h3 class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4" id="chart-title-2">Distribución por Subtipo</h3>
                         <div class="h-64 flex items-center justify-center"><canvas id="chartSubtipo"></canvas></div>
                     </div>
-                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Estado de Consumo</h3>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col justify-between">
+                        <h3 class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4">Estado de Consumo</h3>
                         <div class="h-64 flex items-center justify-center"><canvas id="chartEstado"></canvas></div>
                     </div>
-                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between xl:col-span-1 lg:col-span-2">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Puntuación (Estrellas)</h3>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col justify-between xl:col-span-1 lg:col-span-2">
+                        <h3 class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4">Puntuación (Estrellas)</h3>
                         <div class="h-64 flex items-center justify-center"><canvas id="chartRating"></canvas></div>
                     </div>
-                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between xl:col-span-2 lg:col-span-2">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Distribución por Año de Salida</h3>
+                    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col justify-between xl:col-span-2 lg:col-span-2">
+                        <h3 class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4">Distribución por Año de Salida</h3>
                         <div class="h-64 flex items-center justify-center"><canvas id="chartAnios"></canvas></div>
                     </div>
                 </section>
@@ -185,39 +195,39 @@
     </div>
 
     <div id="media-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm overflow-y-auto">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 md:p-6 space-y-4 my-auto">
-            <h3 id="modal-title" class="text-lg font-bold text-slate-200">Añadir Nuevo Registro</h3>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-5 md:p-6 space-y-4 my-auto">
+            <h3 id="modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-200">Añadir Nuevo Registro</h3>
             <form id="media-form" class="space-y-3" onsubmit="saveMedia(event)">
                 <input type="hidden" id="form-id">
                 
                 <div>
-                    <label class="block text-xs text-slate-400 font-medium mb-1">Título</label>
-                    <input type="text" id="form-titulo" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Título</label>
+                    <input type="text" id="form-titulo" required class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">Subtipo / Formato</label>
-                        <input type="text" id="form-subtipo" placeholder="Ej: Manga, Anime" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Subtipo / Formato</label>
+                        <input type="text" id="form-subtipo" placeholder="Ej: Manga, Anime" required class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">Género</label>
-                        <input type="text" id="form-genero" placeholder="Ej: Shonen, Sci-Fi" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Género</label>
+                        <input type="text" id="form-genero" placeholder="Ej: Shonen, Sci-Fi" required class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-3">
                     <div class="col-span-1">
-                        <label class="block text-xs text-slate-400 font-medium mb-1">Año de Salida</label>
-                        <input type="number" id="form-anio" placeholder="Ej: 2023" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Año de Salida</label>
+                        <input type="number" id="form-anio" placeholder="Ej: 2023" class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                     </div>
                     <div id="container-form-plataforma" class="hidden col-span-2">
-                        <label class="block text-xs text-slate-400 font-medium mb-1">Plataforma Hardware</label>
-                        <input type="text" id="form-plataforma" placeholder="Ej: PS2, PS4, PC" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Plataforma Hardware</label>
+                        <input type="text" id="form-plataforma" placeholder="Ej: PS2, PS4, PC" class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                     </div>
                     <div class="col-span-2" id="container-form-rating">
-                        <label class="block text-xs text-slate-400 font-medium mb-1">Puntuación (⭐)</label>
-                        <select id="form-rating" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Puntuación (⭐)</label>
+                        <select id="form-rating" class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                             <option value="0">Sin puntuar</option>
                             <option value="0.5">0.5 ⭐</option>
                             <option value="1">1.0 ⭐</option>
@@ -235,40 +245,40 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">Estado Lógico</label>
-                        <select id="form-estado" onchange="toggleFormCapitulos()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Estado Lógico</label>
+                        <select id="form-estado" onchange="toggleFormCapitulos()" class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                         </select>
                     </div>
                     <div class="grid grid-cols-2 gap-2" id="container-form-unidades">
                         <div>
-                            <label class="block text-xs text-slate-400 font-medium mb-1" id="modal-label-totales">Totales</label>
-                            <input type="number" id="form-totales" min="0" value="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1" id="modal-label-totales">Totales</label>
+                            <input type="number" id="form-totales" min="0" value="1" class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-400 font-medium mb-1" id="modal-label-vistos">Vistos</label>
-                            <input type="number" id="form-vistos" min="0" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1" id="modal-label-vistos">Vistos</label>
+                            <input type="number" id="form-vistos" min="0" value="0" class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs text-slate-400 font-medium mb-1">URL de la Portada</label>
-                    <input type="url" id="form-portada" placeholder="https://ejemplo.com/imagen.jpg" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">URL de la Portada</label>
+                    <input type="url" id="form-portada" placeholder="https://ejemplo.com/imagen.jpg" class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-slate-800 pt-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-slate-200 dark:border-slate-800 pt-3">
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">Notas (Opcional)</label>
-                        <textarea id="form-notas" rows="2" placeholder="Información adicional..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                        <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Notas (Opcional)</label>
+                        <textarea id="form-notas" rows="2" placeholder="Información adicional..." class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">Reseña (Opcional)</label>
-                        <textarea id="form-resena" rows="2" placeholder="Tu opinión..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                        <label class="block text-xs text-slate-600 dark:text-slate-400 font-medium mb-1">Reseña (Opcional)</label>
+                        <textarea id="form-resena" rows="2" placeholder="Tu opinión..." class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
                     </div>
                 </div>
 
                 <div class="flex justify-end space-x-3 pt-3">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
                     <button type="submit" class="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition shadow-lg cursor-pointer">Guardar</button>
                 </div>
             </form>

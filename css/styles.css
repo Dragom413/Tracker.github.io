@@ -1,3 +1,5 @@
+@custom-variant dark (&:where(.dark, .dark *));
+
 html.entorno-local #auth-screen { display: none !important; }
 html.entorno-local #app-container {
     display: flex !important;
