@@ -51,16 +51,15 @@ const SearchAPIs = (() => {
     }
 
     // --- Comic Vine (Comics occidentales) ---
+    // Comic Vine no soporta CORS, se usa proxy
     async function searchComicVine(query) {
         const key = window.API_CONFIG.COMICVINE_KEY;
         if (!key) return [];
 
-        const url = `https://comicvine.gamespot.com/api/issues/?api_key=${encodeURIComponent(key)}&format=json&filter=name:${encodeURIComponent(query)}&sort=name&limit=${MAX_RESULTS}`;
+        const apiUrl = `https://comicvine.gamespot.com/api/issues/?api_key=${encodeURIComponent(key)}&format=json&filter=name:${encodeURIComponent(query)}&sort=name&limit=${MAX_RESULTS}`;
+        const url = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
 
-        const res = await fetch(url, {
-            signal: abortController?.signal,
-            headers: { 'Accept': 'application/json' },
-        });
+        const res = await fetch(url, { signal: abortController?.signal });
         if (!res.ok) return [];
         const json = await res.json();
         const results = json.results || [];
@@ -102,7 +101,7 @@ const SearchAPIs = (() => {
                 portada: r.poster_path ? 'https://image.tmdb.org/t/p/w500' + r.poster_path : '',
                 genero: genres,
                 anio: year || '',
-                totales: type === 'series' ? (r.number_of_seasons || null) : null,
+                totales: type === 'series' ? (r.number_of_episodes || null) : null,
                 subtipo: type === 'peliculas' ? 'Película' : 'Serie',
                 plataforma: '',
                 sinopsis: r.overview || '',
