@@ -1,0 +1,6 @@
+html.entorno-local #auth-screen { display: none !important; }
+html.entorno-local #app-container {
+    display: flex !important;
+    flex-direction: column;
+    min-height: 100vh;
+}
