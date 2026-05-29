@@ -12,7 +12,6 @@ window.API_CONFIG = {
     TMDB_IMG: 'https://image.tmdb.org/t/p/w500',
     ANILIST_URL: 'https://graphql.anilist.co',
     RAWG_BASE: 'https://api.rawg.io/api',
-    COMICVINE_BASE: 'https://comicvine.gamespot.com/api',
 
     get TMDB_KEY() {
         return this._getKey('TMDB_KEY');
@@ -20,21 +19,12 @@ window.API_CONFIG = {
     get RAWG_KEY() {
         return this._getKey('RAWG_KEY');
     },
-    get COMICVINE_KEY() {
-        return this._getKey('COMICVINE_KEY');
-    },
-    get COMICS_SOURCE() {
-        return this._getKey('COMICS_SOURCE') || 'anilist';
-    },
 
     get TMDB_ENABLED() {
         return this.TMDB_KEY && this.TMDB_KEY !== 'AQUI_TU_KEY_DE_TMDB';
     },
     get RAWG_ENABLED() {
         return this.RAWG_KEY && this.RAWG_KEY !== 'AQUI_TU_KEY_DE_RAWG';
-    },
-    get COMICVINE_ENABLED() {
-        return this.COMICVINE_KEY && this.COMICVINE_KEY !== 'AQUI_TU_KEY_DE_COMICVINE';
     },
     ANILIST_ENABLED: true,
 
@@ -65,7 +55,5 @@ window.getAllAPIStatus = function() {
         anilist: true,
         tmdb: window.API_CONFIG.TMDB_ENABLED,
         rawg: window.API_CONFIG.RAWG_ENABLED,
-        comicvine: window.API_CONFIG.COMICVINE_ENABLED,
-        comicsSource: window.API_CONFIG.COMICS_SOURCE,
     };
 };

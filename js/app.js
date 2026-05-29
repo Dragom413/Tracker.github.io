@@ -70,6 +70,11 @@ function getChartThemeColors() {
     };
 }
 
+function titleCase(str) {
+    if (!str) return '';
+    return str.trim().toLowerCase().replace(/(^|[\s,]+)(\w)/g, function(_, sep, c) { return sep + c.toUpperCase(); });
+}
+
 window.onThemeChange = () => {
     if (currentTab === 'stats') renderStats();
 };
@@ -83,25 +88,27 @@ window.toggleAPIPanel = function() {
     if (!panel.classList.contains('hidden')) loadAPIPanelData();
 };
 
-window.onAPIPanelChange = function() {
-    const source = document.getElementById('api-comics-source').value;
-    document.getElementById('api-comicvine-key-container').classList.toggle('hidden', source !== 'comicvine');
+window.toggleCategoryDropdown = function() {
+    document.getElementById('category-dropdown').classList.toggle('hidden');
 };
+
+document.addEventListener('click', function(e) {
+    const wrapper = document.getElementById('category-dropdown-wrapper');
+    const dropdown = document.getElementById('category-dropdown');
+    if (wrapper && !wrapper.contains(e.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
 
 window.loadAPIPanelData = function() {
     const keys = window.loadAPIKeys();
-    document.getElementById('api-comics-source').value = keys.COMICS_SOURCE || 'anilist';
-    document.getElementById('api-comicvine-key').value = keys.COMICVINE_KEY || '';
     document.getElementById('api-tmdb-key').value = keys.TMDB_KEY || '';
     document.getElementById('api-rawg-key').value = keys.RAWG_KEY || '';
-    onAPIPanelChange();
     updateAPIStatusIndicators();
 };
 
 window.saveAPIPanel = function() {
     const keys = {
-        COMICS_SOURCE: document.getElementById('api-comics-source').value,
-        COMICVINE_KEY: document.getElementById('api-comicvine-key').value.trim(),
         TMDB_KEY: document.getElementById('api-tmdb-key').value.trim(),
         RAWG_KEY: document.getElementById('api-rawg-key').value.trim(),
     };
@@ -155,6 +162,7 @@ async function iniciarAppLocal() {
     cargarDatosDesdeLocalStorage();
     switchTab('home');
     setTimeout(updateAPIStatusIndicators, 0);
+    startStatusChecker();
 }
 
 function cargarDatosDesdeLocalStorage() {
@@ -174,6 +182,7 @@ if (isEntornoLocal()) {
             await cargarDatosDesdeFirebase();
             switchTab('home');
             setTimeout(updateAPIStatusIndicators, 0);
+            startStatusChecker();
         } else {
             usuarioActual = null;
             mediaData = { comics: [], series: [], peliculas: [], videojuegos: [], customLists: [] };
@@ -286,6 +295,7 @@ window.resetFilters = function() {
     document.getElementById('filter-genero').value = "";
     document.getElementById('filter-subtipo').value = "";
     document.getElementById('filter-completado').value = "";
+    document.getElementById('filter-sort').value = "";
     renderCollection();
 };
 
@@ -300,8 +310,8 @@ function updateFilterOptions() {
     const currSub = subSelect.value;
     const currEst = estSelect.value;
 
-    const generos = [...new Set(list.map(i => i.genero).filter(Boolean))].sort();
-    const subtipos = [...new Set(list.map(i => i.subtipo).filter(Boolean))].sort();
+    const generos = [...new Set(list.flatMap(i => (i.genero || '').split(/,\s*/).map(g => g.trim())).filter(Boolean))].sort();
+    const subtipos = [...new Set(list.map(i => titleCase(i.subtipo)).filter(Boolean))].sort();
     const estados = [...new Set(list.map(i => i.estado).filter(Boolean))].sort();
 
     genSelect.innerHTML = '<option value="">Género: Todos</option>' + generos.map(g => `<option value="${g}">${g}</option>`).join('');
@@ -316,13 +326,19 @@ function updateFilterOptions() {
 window.switchTab = function(tab) {
     currentTab = tab;
 
-    const tabsList = ['home', 'comics', 'series', 'peliculas', 'videojuegos', 'lists', 'stats'];
-    tabsList.forEach(t => {
-        const btn = document.getElementById(`btn-nav-${t}`);
-        if (btn) {
-            btn.className = (t === tab) ? UI.navActive : UI.navInactive;
-        }
-    });
+    const tabLabels = {
+        home: { icon: '🏠', label: 'Inicio' },
+        comics: { icon: '📚', label: 'Cómics & Manga' },
+        series: { icon: '📺', label: 'Series & Anime' },
+        peliculas: { icon: '🎬', label: 'Películas' },
+        videojuegos: { icon: '🎮', label: 'Videojuegos' },
+        lists: { icon: '📋', label: 'Mis Listas' },
+        stats: { icon: '📊', label: 'Estadísticas' },
+    };
+    const info = tabLabels[tab] || tabLabels.home;
+    document.getElementById('category-current-icon').textContent = info.icon;
+    document.getElementById('category-current-label').textContent = info.label;
+    document.getElementById('category-dropdown').classList.add('hidden');
 
     document.getElementById('view-home').classList.add('hidden');
     document.getElementById('view-collection').classList.add('hidden');
@@ -333,6 +349,7 @@ window.switchTab = function(tab) {
     document.getElementById('box-stat-leyendo').classList.remove('hidden');
     document.getElementById('box-stat-pendientes').classList.remove('hidden');
     document.getElementById('box-stat-completados').classList.remove('hidden');
+    document.getElementById('box-stat-abandonados').classList.add('hidden');
     document.getElementById('stats-header-grid').className = "grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6";
 
     if(tab === 'home') { document.getElementById('view-home').classList.remove('hidden'); renderHomeView(); }
@@ -352,7 +369,8 @@ window.switchTab = function(tab) {
             ratingContainer.className = "col-span-1";
             
             document.getElementById('box-stat-vistos').classList.add('hidden');
-            document.getElementById('stats-header-grid').className = "grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6";
+            document.getElementById('box-stat-abandonados').classList.remove('hidden');
+            document.getElementById('stats-header-grid').className = "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6";
 
         } else if(tab === 'peliculas') {
             plataformaContainer.classList.add('hidden');
@@ -424,19 +442,10 @@ window.openModal = function(mode, id = null) {
         document.getElementById('form-notas').value = "";
         document.getElementById('form-resena').value = "";
 
-        const apiSourceContainer = document.getElementById('modal-api-source-container');
-        if (currentTab === 'comics') {
-            apiSourceContainer.classList.remove('hidden');
-            document.getElementById('modal-api-source').value = window.API_CONFIG.COMICS_SOURCE || 'anilist';
-        } else {
-            apiSourceContainer.classList.add('hidden');
-        }
-
         const tituloInput = document.getElementById('form-titulo');
         tituloInput.oninput = function() {
             if (typeof SearchAPIs !== 'undefined') {
-                const apiSource = document.getElementById('modal-api-source').value;
-                SearchAPIs.search(this.value, currentTab, apiSource);
+                SearchAPIs.search(this.value, currentTab);
             }
         };
     } else if(mode === 'edit') {
@@ -465,10 +474,23 @@ window.selectSearchResult = function(item) {
     document.getElementById('form-portada').value = item.portada || '';
     document.getElementById('form-genero').value = item.genero || '';
     document.getElementById('form-anio').value = item.anio || '';
-    if (item.totales) document.getElementById('form-totales').value = item.totales;
     if (item.subtipo) document.getElementById('form-subtipo').value = item.subtipo;
     if (item.plataforma) document.getElementById('form-plataforma').value = item.plataforma;
     if (item.sinopsis) document.getElementById('form-notas').value = item.sinopsis;
+
+    const externalId = item._anilistId || item._tmdbId || '';
+    document.getElementById('form-external-id').value = externalId;
+
+    if (item.apiStatus) {
+        document.getElementById('form-estado').value = item.apiStatus;
+        if (item.apiStatus === 'En curso') {
+            document.getElementById('form-totales').value = 0;
+        } else if (item.totales) {
+            document.getElementById('form-totales').value = item.totales;
+        }
+    } else if (item.totales) {
+        document.getElementById('form-totales').value = item.totales;
+    }
 
     if (typeof SearchAPIs !== 'undefined') SearchAPIs.closeDropdown();
 
@@ -487,8 +509,8 @@ window.saveMedia = function(e) {
     e.preventDefault();
     const id = document.getElementById('form-id').value;
     const titulo = document.getElementById('form-titulo').value;
-    const subtipo = document.getElementById('form-subtipo').value;
-    const genero = document.getElementById('form-genero').value;
+    const subtipo = titleCase(document.getElementById('form-subtipo').value);
+    const genero = titleCase(document.getElementById('form-genero').value);
     const anio = document.getElementById('form-anio').value;
     let estado = document.getElementById('form-estado').value;
     const rating = document.getElementById('form-rating').value;
@@ -498,6 +520,7 @@ window.saveMedia = function(e) {
     let portada = document.getElementById('form-portada').value || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400';
     const notas = document.getElementById('form-notas').value;
     const resena = document.getElementById('form-resena').value;
+    const externalId = document.getElementById('form-external-id').value || '';
 
     if(currentTab === 'peliculas') {
         totales = 1;
@@ -513,10 +536,10 @@ window.saveMedia = function(e) {
         const idx = mediaData[currentTab].findIndex(i => i.id == id);
         if(idx !== -1) {
             const wasFav = mediaData[currentTab][idx].favorito || false;
-            mediaData[currentTab][idx] = { id: Number(id), titulo, subtipo, genero, anio, estado, totales, vistos, portada, rating, plataforma, notas, resena, favorito: wasFav };
+            mediaData[currentTab][idx] = { id: Number(id), titulo, subtipo, genero, anio, estado, totales, vistos, portada, rating, plataforma, notas, resena, favorito: wasFav, externalId };
         }
     } else {
-        mediaData[currentTab].push({ id: Date.now(), titulo, subtipo, genero, anio, estado, totales, vistos, portada, rating, plataforma, notas, resena, favorito: false });
+        mediaData[currentTab].push({ id: Date.now(), titulo, subtipo, genero, anio, estado, totales, vistos, portada, rating, plataforma, notas, resena, favorito: false, externalId });
     }
     window.closeModal();
     window.saveToStorage();
@@ -534,10 +557,119 @@ window.toggleFavorito = function(id) {
     if(item) { item.favorito = !item.favorito; window.saveToStorage(); }
 };
 
+window.toggleAbandonado = function(id) {
+    const item = mediaData[currentTab].find(i => i.id === id);
+    if (!item) return;
+    if (item.estado === 'Abandonado') {
+        if (currentTab === 'videojuegos') {
+            item.estado = 'Por Jugar';
+        } else if (currentTab === 'peliculas') {
+            item.estado = 'No Visto';
+        } else {
+            item.estado = 'En curso';
+        }
+    } else {
+        item.estado = 'Abandonado';
+    }
+    window.saveToStorage();
+};
+
+// ==========================================
+// CHECKER PERIÓDICO DE ESTADOS
+// ==========================================
+async function fetchAnilistStatus(anilistId) {
+    try {
+        const graphql = JSON.stringify({
+            query: `query ($id: Int) {
+                Media(id: $id, type: MANGA) {
+                    status
+                    chapters
+                }
+            }`,
+            variables: { id: anilistId },
+        });
+        const res = await fetch('https://graphql.anilist.co', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: graphql,
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        const m = json.data?.Media;
+        if (!m) return null;
+        const mapStatus = (s) => {
+            if (s === 'RELEASING') return 'En curso';
+            if (s === 'FINISHED') return 'Finalizado';
+            if (s === 'HIATUS') return 'En curso';
+            return 'Por emitir';
+        };
+        return { status: mapStatus(m.status), chapters: m.chapters || null };
+    } catch (e) { return null; }
+}
+
+async function fetchTMDBStatus(tmdbId) {
+    try {
+        const key = window.API_CONFIG.TMDB_KEY;
+        if (!key) return null;
+        const url = `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${encodeURIComponent(key)}&language=es-ES`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const mapStatus = (s) => {
+            if (!s) return 'Por emitir';
+            if (s === 'Returning Series' || s === 'In Production') return 'En curso';
+            if (s === 'Ended') return 'Finalizado';
+            return 'Por emitir';
+        };
+        const total = (data.seasons || [])
+            .filter(s => s.season_number > 0)
+            .reduce((sum, s) => sum + (s.episode_count || 0), 0);
+        return { status: mapStatus(data.status), episodes: total || null };
+    } catch (e) { return null; }
+}
+
+async function checkSeriesStatus() {
+    const lastCheck = localStorage.getItem('lastStatusCheck');
+    const now = Date.now();
+    if (lastCheck && (now - parseInt(lastCheck)) < 24 * 60 * 60 * 1000) return;
+
+    let changed = false;
+
+    for (const cat of ['comics', 'series']) {
+        for (const item of mediaData[cat]) {
+            if (item.estado !== 'En curso' || !item.externalId) continue;
+
+            let result = null;
+            if (cat === 'comics') {
+                result = await fetchAnilistStatus(Number(item.externalId));
+            } else {
+                result = await fetchTMDBStatus(Number(item.externalId));
+            }
+
+            if (result && result.status === 'Finalizado') {
+                item.estado = 'Finalizado';
+                if (cat === 'comics' && result.chapters) item.totales = result.chapters;
+                if (cat === 'series' && result.episodes) item.totales = result.episodes;
+                changed = true;
+            }
+        }
+    }
+
+    if (changed) window.saveToStorage();
+    localStorage.setItem('lastStatusCheck', now.toString());
+}
+
+function startStatusChecker() {
+    checkSeriesStatus();
+    setInterval(checkSeriesStatus, 24 * 60 * 60 * 1000);
+}
+
 window.incrementCapitulo = function(id, forceCategory = null) {
     const cat = forceCategory || currentTab;
     const item = mediaData[cat].find(i => i.id === id);
     if(!item) return;
+
+    if (item.estado === 'Abandonado') return;
 
     if (cat === 'videojuegos') {
         if (item.estado === 'Por Jugar') {
@@ -632,16 +764,21 @@ function renderHomeView() {
             const labelInfo = (cat === 'videojuegos') ? `Estado: <b>${item.estado}</b>` : `${voc.vistos}: <b>${item.vistos}</b>`;
             
             let actionBtnText = voc.accion;
-            if (cat === 'videojuegos' && item.estado === 'Jugando') actionBtnText = '🕹️ Jugado';
+            if (item.estado === 'Abandonado') actionBtnText = '🚫 Abandonado';
+            else if (cat === 'videojuegos' && item.estado === 'Jugando') actionBtnText = '🕹️ Jugado';
 
             const div = document.createElement('div');
             div.className = UI.homeItem;
+            const isAbandonedHome = item.estado === 'Abandonado';
             div.innerHTML = `
                 <img src="${item.portada}" class="w-10 h-14 object-cover rounded-md ${UI.imgPlaceholder} shrink-0">
                 <div class="flex-1 min-w-0">
                     <h4 class="text-xs font-bold ${UI.textPrimary} truncate" title="${item.titulo}">${item.titulo}</h4>
                     <div class="flex items-center gap-2 mt-1">${platform}<p class="text-[10px] ${UI.textMuted} font-mono">${labelInfo}</p></div>
-                    <button onclick="incrementCapitulo(${item.id}, '${cat}')" class="mt-2 w-full ${UI.btnGhost} text-[10px] py-1 rounded-lg font-mono transition cursor-pointer">${actionBtnText}</button>
+                    ${isAbandonedHome
+                        ? `<button class="mt-2 w-full bg-rose-100 dark:bg-rose-950 text-rose-400 border border-rose-200 dark:border-rose-900 text-[10px] py-1 rounded-lg font-mono cursor-not-allowed opacity-60">${actionBtnText}</button>`
+                        : `<button onclick="incrementCapitulo(${item.id}, '${cat}')" class="mt-2 w-full ${UI.btnGhost} text-[10px] py-1 rounded-lg font-mono transition cursor-pointer">${actionBtnText}</button>`
+                    }
                 </div>
             `;
             box.appendChild(div);
@@ -654,17 +791,19 @@ window.renderCollection = function() {
     const rawList = mediaData[currentTab] || []; 
     const voc = vocabulary[currentTab];
     
-    let statVistos = 0, statLeyendo = 0, statPendientes = 0, statCompletados = 0;
+    let statVistos = 0, statLeyendo = 0, statPendientes = 0, statCompletados = 0, statAbandonados = 0;
     rawList.forEach(item => {
         if (currentTab === 'peliculas') {
             if (item.estado === 'Visto') statCompletados++; else statLeyendo++; 
         } else if (currentTab === 'videojuegos') {
-            if (item.estado === 'Por Jugar') statPendientes++; 
+            if (item.estado === 'Abandonado') statAbandonados++;
+            else if (item.estado === 'Por Jugar') statPendientes++; 
             else if (item.estado === 'Jugando') statLeyendo++; 
             else statCompletados++;
             statVistos += item.vistos;
         } else {
             statVistos += item.vistos;
+            if (item.estado === 'Abandonado') return;
             if (item.totales > 0 && item.vistos >= item.totales) {
                 statCompletados++;
             } else if (item.estado === 'En curso' || item.vistos > 0) {
@@ -678,6 +817,7 @@ window.renderCollection = function() {
     document.getElementById('stat-leyendo').innerText = statLeyendo;
     document.getElementById('stat-pendientes').innerText = statPendientes;
     document.getElementById('stat-completados').innerText = statCompletados;
+    document.getElementById('stat-abandonados').innerText = statAbandonados;
 
     const fSearch = document.getElementById('filter-search').value.toLowerCase();
     const fEstado = document.getElementById('filter-estado').value;
@@ -689,7 +829,7 @@ window.renderCollection = function() {
         let match = true;
         if(fSearch && !item.titulo.toLowerCase().includes(fSearch)) match = false;
         if(fEstado && item.estado !== fEstado) match = false;
-        if(fGenero && item.genero !== fGenero) match = false;
+        if(fGenero && !(item.genero || '').split(/,\s*/).map(g => g.trim()).includes(fGenero)) match = false;
         if(fSubtipo && item.subtipo !== fSubtipo) match = false;
         
         if(fCompletado) {
@@ -708,6 +848,21 @@ window.renderCollection = function() {
         filterCountEl.classList.remove('hidden');
     } else { filterCountEl.classList.add('hidden'); }
 
+    const fSort = document.getElementById('filter-sort').value;
+    if (fSort) {
+        listToDisplay.sort((a, b) => {
+            if (fSort === 'nombre-asc') return a.titulo.localeCompare(b.titulo);
+            if (fSort === 'nombre-desc') return b.titulo.localeCompare(a.titulo);
+            if (fSort === 'anio-asc') return (parseInt(a.anio) || 0) - (parseInt(b.anio) || 0);
+            if (fSort === 'anio-desc') return (parseInt(b.anio) || 0) - (parseInt(a.anio) || 0);
+            if (fSort === 'estado') {
+                const order = { 'En curso': 0, 'Jugando': 1, 'Por Jugar': 2, 'No Visto': 3, 'Por emitir': 4, 'Finalizado': 5, 'Visto': 6, 'Jugado': 7, 'Abandonado': 8 };
+                return (order[a.estado] ?? 99) - (order[b.estado] ?? 99);
+            }
+            return 0;
+        });
+    }
+
     listToDisplay.forEach(item => {
         let tagEstado = ''; 
         let colorTag = '';
@@ -718,11 +873,15 @@ window.renderCollection = function() {
         } else if (currentTab === 'videojuegos') {
             if (item.estado === 'Por Jugar') { tagEstado = 'Por Jugar'; colorTag = 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'; }
             else if (item.estado === 'Jugando') { tagEstado = 'Jugando'; colorTag = 'bg-amber-500 text-slate-950 font-bold'; }
+            else if (item.estado === 'Abandonado') { tagEstado = 'Abandonado'; colorTag = 'bg-rose-600 text-white'; }
             else { tagEstado = 'Jugado'; colorTag = 'bg-purple-600 text-white'; }
         } else {
             if (item.totales > 0 && item.vistos >= item.totales) { 
                 tagEstado = voc.completado; 
                 colorTag = 'bg-purple-600'; 
+            } else if (item.estado === 'Abandonado') { 
+                tagEstado = 'Abandonado'; 
+                colorTag = 'bg-rose-600 text-white'; 
             } else if (item.estado === 'En curso' || item.vistos > 0) { 
                 tagEstado = (currentTab === 'comics') ? 'Leyendo' : 'Viendo'; 
                 colorTag = 'bg-blue-500'; 
@@ -743,16 +902,24 @@ window.renderCollection = function() {
         card.className = UI.mediaCard;
         
         let actionBtnText = voc.accion;
-        if(currentTab === 'videojuegos' && item.estado === 'Por Jugar') actionBtnText = '🎮 Empezar Juego';
-        if(currentTab === 'videojuegos' && item.estado === 'Jugando') actionBtnText = '🕹️ Jugado';
-        if(currentTab === 'videojuegos' && item.estado === 'Jugado') actionBtnText = '🔄 Reiniciar Estado';
-        if(currentTab === 'peliculas') actionBtnText = item.estado === 'Visto' ? '❌ Desmarcar' : '👁️ Marcar Visto';
-        
-        if((currentTab === 'comics' || currentTab === 'series') && (item.totales > 0 && item.vistos >= item.totales)) {
+        if (item.estado === 'Abandonado') {
+            actionBtnText = '🚫 Abandonado';
+        } else if(currentTab === 'videojuegos' && item.estado === 'Por Jugar') {
+            actionBtnText = '🎮 Empezar Juego';
+        } else if(currentTab === 'videojuegos' && item.estado === 'Jugando') {
+            actionBtnText = '🕹️ Jugado';
+        } else if(currentTab === 'videojuegos' && item.estado === 'Jugado') {
+            actionBtnText = '🔄 Reiniciar Estado';
+        } else if(currentTab === 'peliculas') {
+            actionBtnText = item.estado === 'Visto' ? '❌ Desmarcar' : '👁️ Marcar Visto';
+        } else if((currentTab === 'comics' || currentTab === 'series') && (item.totales > 0 && item.vistos >= item.totales)) {
             actionBtnText = '🔄 Reiniciar Avance';
         }
 
-        let actionBtn = `<button onclick="incrementCapitulo(${item.id})" class="mt-2 w-full ${UI.btnGhost} font-medium text-[11px] py-1.5 rounded-xl transition font-mono cursor-pointer">${actionBtnText}</button>`;
+        const isAbandonado = item.estado === 'Abandonado';
+        let actionBtn = isAbandonado
+            ? `<button class="mt-2 w-full bg-rose-100 dark:bg-rose-950 text-rose-400 border border-rose-200 dark:border-rose-900 font-medium text-[11px] py-1.5 rounded-xl transition font-mono cursor-not-allowed opacity-60">${actionBtnText}</button>`
+            : `<button onclick="incrementCapitulo(${item.id})" class="mt-2 w-full ${UI.btnGhost} font-medium text-[11px] py-1.5 rounded-xl transition font-mono cursor-pointer">${actionBtnText}</button>`;
 
         let footerInfo = '';
         if(currentTab === 'comics' || currentTab === 'series') {
@@ -779,12 +946,16 @@ window.renderCollection = function() {
                         <button onclick="deleteMedia(${item.id})" class="flex-1 py-1.5 ${UI.btnSurface} hover:bg-rose-600 hover:text-white rounded-xl text-[11px] font-semibold text-rose-500 cursor-pointer">Borrar</button>
                     </div>
                     <button onclick="toggleFavorito(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl ${favActive} cursor-pointer">❤️ Favorito</button>
+                    ${item.estado !== 'Abandonado' 
+                        ? `<button onclick="toggleAbandonado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl text-rose-400 cursor-pointer">🚫 Abandonar</button>`
+                        : `<button onclick="toggleAbandonado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl text-emerald-400 cursor-pointer">▶️ Reanudar</button>`
+                    }
                 </div>
             </div>
             <div class="p-3 flex flex-col justify-between flex-1 gap-1">
                 <div>
                     <h4 class="font-bold text-xs truncate ${UI.textPrimary}" title="${item.titulo}">${item.titulo}${noteIndicator}</h4>
-                    <p class="text-[10px] ${UI.textMuted} truncate">${item.genero || 'Sin género'} • <span class="${UI.textDim}">${item.subtipo || 'General'}</span></p>
+                    <p class="text-[10px] ${UI.textMuted} truncate">${item.genero || 'Sin género'} • <span class="${UI.textDim}">${titleCase(item.subtipo) || 'General'}</span></p>
                 </div>
                 <div class="mt-1">
                     ${footerInfo}
@@ -841,7 +1012,7 @@ function renderListsView() {
 function renderStats() {
     const list = mediaData[currentStatsSubTab] || [];
     let generoMap = {}; let subtipoMap = {}; let anioMap = {};
-    let estadoCounts = { 'En Curso': 0, 'Completados': 0, 'Pendientes': 0 };
+    let estadoCounts = { 'En Curso': 0, 'Completados': 0, 'Pendientes': 0, 'Abandonados': 0 };
     
     let starLabels = ['0.5', '1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5'];
     let ratingMap = { '0.5': 0, '1': 0, '1.5': 0, '2': 0, '2.5': 0, '3': 0, '3.5': 0, '4': 0, '4.5': 0, '5': 0 };
@@ -849,11 +1020,20 @@ function renderStats() {
     document.getElementById('chart-title-2').innerText = (currentStatsSubTab === 'videojuegos') ? "Distribución por Plataformas" : "Distribución por Subtipos / Formatos";
 
     list.forEach(item => {
-        let genKey = item.genero || 'No definido';
-        let subKey = (currentStatsSubTab === 'videojuegos') ? (item.plataforma || 'Sin Hardware') : (item.subtipo || 'No definido');
-        
-        generoMap[genKey] = (generoMap[genKey] || 0) + 1;
-        subtipoMap[subKey] = (subtipoMap[subKey] || 0) + 1;
+        const generos = (item.genero || 'No definido').split(/,\s*/).map(g => g.trim()).filter(Boolean);
+        generos.forEach(g => {
+            generoMap[g] = (generoMap[g] || 0) + 1;
+        });
+
+        if (currentStatsSubTab === 'videojuegos') {
+            const plataformas = (item.plataforma || 'Sin Hardware').split(/,\s*/).map(p => p.trim()).filter(Boolean);
+            plataformas.forEach(p => {
+                subtipoMap[p] = (subtipoMap[p] || 0) + 1;
+            });
+        } else {
+            const subKey = item.subtipo || 'No definido';
+            subtipoMap[subKey] = (subtipoMap[subKey] || 0) + 1;
+        }
 
         if(item.anio) { anioMap[item.anio] = (anioMap[item.anio] || 0) + 1; }
 
@@ -865,7 +1045,8 @@ function renderStats() {
             else if (item.estado === 'Jugando') estadoCounts['En Curso']++;
             else estadoCounts['Completados']++;
         } else {
-            if (item.totales > 0 && item.vistos >= item.totales) estadoCounts['Completados']++;
+            if (item.estado === 'Abandonado') { estadoCounts['Abandonados']++; }
+            else if (item.totales > 0 && item.vistos >= item.totales) estadoCounts['Completados']++;
             else if (item.estado === 'En curso' || item.vistos > 0) estadoCounts['En Curso']++;
             else estadoCounts['Pendientes']++;
         }
@@ -906,7 +1087,7 @@ function renderStats() {
     const labelEstadoCurso = currentStatsSubTab === 'peliculas' ? 'Por ver' : 'En Curso';
     chartE = new Chart(document.getElementById('chartEstado'), {
         type: 'bar',
-        data: { labels: [labelEstadoCurso, 'Completados', 'Pendientes'], datasets: [{ data: [estadoCounts['En Curso'], estadoCounts['Completados'], estadoCounts['Pendientes']], backgroundColor: ['#3b82f6', '#a855f7', '#64748b'], borderRadius: 6 }] },
+        data: { labels: [labelEstadoCurso, 'Completados', 'Pendientes', 'Abandonados'], datasets: [{ data: [estadoCounts['En Curso'], estadoCounts['Completados'], estadoCounts['Pendientes'], estadoCounts['Abandonados']], backgroundColor: ['#3b82f6', '#a855f7', '#64748b', '#e11d48'], borderRadius: 6 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: barScaleOpts, plugins: { legend: { display: false } } }
     });
 

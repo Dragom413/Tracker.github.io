@@ -9,6 +9,13 @@ const SearchAPIs = (() => {
     const MIN_CHARS = 3;
     const MAX_RESULTS = 8;
 
+    const mapStatus = (s) => {
+        if (s === 'RELEASING') return 'En curso';
+        if (s === 'FINISHED') return 'Finalizado';
+        if (s === 'HIATUS') return 'En curso';
+        return 'Por emitir';
+    };
+
     // --- Anilist (Manga) ---
     async function searchAnilist(query) {
         const graphql = JSON.stringify({
@@ -20,6 +27,7 @@ const SearchAPIs = (() => {
                     startDate { year }
                     chapters
                     format
+                    status
                     description(asHtml: false)
                 }
             }`,
@@ -47,36 +55,70 @@ const SearchAPIs = (() => {
             subtipo: m.format || 'Manga',
             plataforma: '',
             sinopsis: m.description ? m.description.replace(/<[^>]*>/g, '').substring(0, 300) : '',
+            apiStatus: mapStatus(m.status),
+            _anilistId: m.id,
         }];
     }
 
-    // --- Comic Vine (Comics occidentales) ---
-    // Comic Vine no soporta CORS, se usa proxy
-    async function searchComicVine(query) {
-        const key = window.API_CONFIG.COMICVINE_KEY;
-        if (!key) return [];
+    // --- Anilist (Anime/Series) ---
+    async function searchAnilistTV(query) {
+        const graphql = JSON.stringify({
+            query: `query ($search: String) {
+                Media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
+                    title { romaji, english }
+                    coverImage { large }
+                    genres
+                    startDate { year }
+                    episodes
+                    format
+                    status
+                    description(asHtml: false)
+                }
+            }`,
+            variables: { search: query },
+        });
 
-        const apiUrl = `https://comicvine.gamespot.com/api/issues/?api_key=${encodeURIComponent(key)}&format=json&filter=name:${encodeURIComponent(query)}&sort=name&limit=${MAX_RESULTS}`;
-        const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
+        const res = await fetch('https://graphql.anilist.co', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: graphql,
+            signal: abortController?.signal,
+        });
 
-        const res = await fetch(url, { signal: abortController?.signal });
         if (!res.ok) return [];
         const json = await res.json();
-        const results = json.results || [];
+        const m = json.data?.Media;
+        if (!m) return [];
 
-        return results.map(r => ({
-            titulo: r.name || r.volume?.name || '',
-            portada: r.image?.thumb_url || r.image?.medium_url || '',
-            genero: r.publisher?.name || '',
-            anio: r.cover_date ? new Date(r.cover_date).getFullYear().toString() : '',
-            totales: null,
-            subtipo: 'Comic',
-            plataforma: r.volume?.name || '',
-            sinopsis: r.description ? r.description.replace(/<[^>]*>/g, '').substring(0, 300) : '',
-        }));
+        return [{
+            titulo: m.title.english || m.title.romaji,
+            portada: m.coverImage.large,
+            genero: (m.genres || []).join(', '),
+            anio: m.startDate.year || '',
+            totales: m.episodes || null,
+            subtipo: m.format || 'Anime',
+            plataforma: '',
+            sinopsis: m.description ? m.description.replace(/<[^>]*>/g, '').substring(0, 300) : '',
+            apiStatus: mapStatus(m.status),
+            _anilistId: m.id,
+        }];
     }
 
     // --- TMDB (Películas / Series) ---
+    async function getTMDBTotalEpisodes(tvId) {
+        const key = window.API_CONFIG.TMDB_KEY;
+        try {
+            const url = `https://api.themoviedb.org/3/tv/${tvId}?api_key=${encodeURIComponent(key)}&language=es-ES`;
+            const res = await fetch(url, { signal: abortController?.signal });
+            if (!res.ok) return null;
+            const data = await res.json();
+            const total = (data.seasons || [])
+                .filter(s => s.season_number > 0)
+                .reduce((sum, s) => sum + (s.episode_count || 0), 0);
+            return total || null;
+        } catch (e) { return null; }
+    }
+
     async function searchTMDB(query, type) {
         const endpoint = type === 'peliculas' ? 'search/movie' : 'search/tv';
         const key = window.API_CONFIG.TMDB_KEY;
@@ -89,24 +131,35 @@ const SearchAPIs = (() => {
         const json = await res.json();
         const results = (json.results || []).slice(0, MAX_RESULTS);
 
-        return results.map(r => {
-            const year = (r.release_date || r.first_air_date || '').substring(0, 4);
-            const genres = (r.genre_ids || []).map(id => {
+        const mapTMDBStatus = (s) => {
+            if (!s) return 'Por emitir';
+            if (s === 'Returning Series' || s === 'In Production') return 'En curso';
+            if (s === 'Ended') return 'Finalizado';
+            return 'Por emitir';
+        };
+
+        const mapped = results.map(r => ({
+            titulo: r.title || r.name,
+            portada: r.poster_path ? 'https://image.tmdb.org/t/p/w500' + r.poster_path : '',
+            genero: (r.genre_ids || []).map(id => {
                 const map = type === 'peliculas' ? TMDB_MOVIE_GENRES : TMDB_TV_GENRES;
                 return map[id] || '';
-            }).filter(Boolean).join(', ');
+            }).filter(Boolean).join(', '),
+            anio: (r.release_date || r.first_air_date || '').substring(0, 4) || '',
+            totales: null,
+            subtipo: type === 'peliculas' ? 'Película' : 'Serie',
+            plataforma: '',
+            sinopsis: r.overview || '',
+            apiStatus: mapTMDBStatus(r.status),
+            _tmdbId: r.id,
+        }));
 
-            return {
-                titulo: r.title || r.name,
-                portada: r.poster_path ? 'https://image.tmdb.org/t/p/w500' + r.poster_path : '',
-                genero: genres,
-                anio: year || '',
-                totales: type === 'series' ? (r.number_of_episodes || null) : null,
-                subtipo: type === 'peliculas' ? 'Película' : 'Serie',
-                plataforma: '',
-                sinopsis: r.overview || '',
-            };
-        });
+        if (type === 'series') {
+            const totals = await Promise.all(mapped.map(r => getTMDBTotalEpisodes(r._tmdbId)));
+            mapped.forEach((r, i) => { r.totales = totals[i]; });
+        }
+
+        return mapped;
     }
 
     const TMDB_MOVIE_GENRES = {
@@ -140,7 +193,7 @@ const SearchAPIs = (() => {
 
             return {
                 titulo: r.name,
-                portada: r.background_image || r.background_image_additional || '',
+                portada: (r.background_image || r.background_image_additional || '') + '?trim=fit&w=400',
                 genero: genres,
                 anio: year || '',
                 totales: null,
@@ -198,7 +251,7 @@ const SearchAPIs = (() => {
     }
 
     // --- Búsqueda principal ---
-    function search(query, category, apiSource) {
+    function search(query, category) {
         if (!query || query.length < MIN_CHARS) {
             closeDropdown();
             return;
@@ -212,17 +265,16 @@ const SearchAPIs = (() => {
             try {
                 let results = [];
                 if (category === 'comics') {
-                    const source = apiSource || window.API_CONFIG.COMICS_SOURCE || 'anilist';
-                    if (source === 'comicvine') {
-                        if (!window.API_CONFIG.COMICVINE_ENABLED) {
-                            console.warn('[MULTIMEDIA.io] Comic Vine no configurado. Ve a ⚙️ APIs.');
-                            return;
-                        }
-                        results = await searchComicVine(query);
+                    results = await searchAnilist(query);
+                } else if (category === 'series') {
+                    const anilistResults = await searchAnilistTV(query);
+                    if (window.API_CONFIG.TMDB_ENABLED) {
+                        const tmdbResults = await searchTMDB(query, category);
+                        results = [...anilistResults, ...tmdbResults].slice(0, MAX_RESULTS);
                     } else {
-                        results = await searchAnilist(query);
+                        results = anilistResults;
                     }
-                } else if (category === 'peliculas' || category === 'series') {
+                } else if (category === 'peliculas') {
                     if (!window.API_CONFIG.TMDB_ENABLED) {
                         console.warn('[MULTIMEDIA.io] TMDB no configurado. Ve a ⚙️ APIs para añadir tu key.');
                         return;
