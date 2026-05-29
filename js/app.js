@@ -75,6 +75,61 @@ window.onThemeChange = () => {
 };
 
 // ==========================================
+// 0. CONFIGURACIÓN DE APIs (Panel UI)
+// ==========================================
+window.toggleAPIPanel = function() {
+    const panel = document.getElementById('api-panel');
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) loadAPIPanelData();
+};
+
+window.onAPIPanelChange = function() {
+    const source = document.getElementById('api-comics-source').value;
+    document.getElementById('api-comicvine-key-container').classList.toggle('hidden', source !== 'comicvine');
+};
+
+window.loadAPIPanelData = function() {
+    const keys = window.loadAPIKeys();
+    document.getElementById('api-comics-source').value = keys.COMICS_SOURCE || 'anilist';
+    document.getElementById('api-comicvine-key').value = keys.COMICVINE_KEY || '';
+    document.getElementById('api-tmdb-key').value = keys.TMDB_KEY || '';
+    document.getElementById('api-rawg-key').value = keys.RAWG_KEY || '';
+    onAPIPanelChange();
+    updateAPIStatusIndicators();
+};
+
+window.saveAPIPanel = function() {
+    const keys = {
+        COMICS_SOURCE: document.getElementById('api-comics-source').value,
+        COMICVINE_KEY: document.getElementById('api-comicvine-key').value.trim(),
+        TMDB_KEY: document.getElementById('api-tmdb-key').value.trim(),
+        RAWG_KEY: document.getElementById('api-rawg-key').value.trim(),
+    };
+    window.saveAPIKeys(keys);
+    updateAPIStatusIndicators();
+    alert('Configuración de APIs guardada.');
+};
+
+function updateAPIStatusIndicators() {
+    const tmdbOk = window.API_CONFIG.TMDB_ENABLED;
+    const rawgOk = window.API_CONFIG.RAWG_ENABLED;
+    const tmdbDot = document.getElementById('api-tmdb-status');
+    const rawgDot = document.getElementById('api-rawg-status');
+    const tmdbText = document.getElementById('api-tmdb-status-text');
+    const rawgText = document.getElementById('api-rawg-status-text');
+    const indicator = document.getElementById('api-panel-indicator');
+
+    if (tmdbDot) { tmdbDot.className = `w-2 h-2 rounded-full ${tmdbOk ? 'bg-emerald-400' : 'bg-slate-400'}`; }
+    if (rawgDot) { rawgDot.className = `w-2 h-2 rounded-full ${rawgOk ? 'bg-emerald-400' : 'bg-slate-400'}`; }
+    if (tmdbText) { tmdbText.innerText = tmdbOk ? 'Configurada' : 'No configurada'; }
+    if (rawgText) { rawgText.innerText = rawgOk ? 'Configurada' : 'No configurada'; }
+    if (indicator) {
+        const anyConfigured = tmdbOk || rawgOk;
+        indicator.textContent = anyConfigured ? '⚙️✅' : '⚙️';
+    }
+}
+
+// ==========================================
 // 1. LÓGICA DE AUTENTICACIÓN
 // ==========================================
 window.iniciarSesion = function() {
@@ -99,6 +154,7 @@ async function iniciarAppLocal() {
     mostrarApp();
     cargarDatosDesdeLocalStorage();
     switchTab('home');
+    setTimeout(updateAPIStatusIndicators, 0);
 }
 
 function cargarDatosDesdeLocalStorage() {
@@ -117,6 +173,7 @@ if (isEntornoLocal()) {
             mostrarApp();
             await cargarDatosDesdeFirebase();
             switchTab('home');
+            setTimeout(updateAPIStatusIndicators, 0);
         } else {
             usuarioActual = null;
             mediaData = { comics: [], series: [], peliculas: [], videojuegos: [], customLists: [] };
@@ -366,6 +423,22 @@ window.openModal = function(mode, id = null) {
         document.getElementById('form-rating').value = "0";
         document.getElementById('form-notas').value = "";
         document.getElementById('form-resena').value = "";
+
+        const apiSourceContainer = document.getElementById('modal-api-source-container');
+        if (currentTab === 'comics') {
+            apiSourceContainer.classList.remove('hidden');
+            document.getElementById('modal-api-source').value = window.API_CONFIG.COMICS_SOURCE || 'anilist';
+        } else {
+            apiSourceContainer.classList.add('hidden');
+        }
+
+        const tituloInput = document.getElementById('form-titulo');
+        tituloInput.oninput = function() {
+            if (typeof SearchAPIs !== 'undefined') {
+                const apiSource = document.getElementById('modal-api-source').value;
+                SearchAPIs.search(this.value, currentTab, apiSource);
+            }
+        };
     } else if(mode === 'edit') {
         document.getElementById('modal-title').innerText = 'Editar Registro';
         const item = mediaData[currentTab].find(i => i.id === id);
@@ -387,7 +460,28 @@ window.openModal = function(mode, id = null) {
     }
 };
 
-window.closeModal = function() { document.getElementById('media-modal').classList.add('hidden'); };
+window.selectSearchResult = function(item) {
+    document.getElementById('form-titulo').value = item.titulo || '';
+    document.getElementById('form-portada').value = item.portada || '';
+    document.getElementById('form-genero').value = item.genero || '';
+    document.getElementById('form-anio').value = item.anio || '';
+    if (item.totales) document.getElementById('form-totales').value = item.totales;
+    if (item.subtipo) document.getElementById('form-subtipo').value = item.subtipo;
+    if (item.plataforma) document.getElementById('form-plataforma').value = item.plataforma;
+    if (item.sinopsis) document.getElementById('form-notas').value = item.sinopsis;
+
+    if (typeof SearchAPIs !== 'undefined') SearchAPIs.closeDropdown();
+
+    ['form-titulo', 'form-portada', 'form-genero', 'form-anio', 'form-totales', 'form-subtipo', 'form-plataforma', 'form-notas'].forEach(fid => {
+        const el = document.getElementById(fid);
+        if (el) { el.style.transition = 'background-color 0.4s'; el.style.backgroundColor = 'rgba(99,102,241,0.1)'; setTimeout(() => { el.style.backgroundColor = ''; }, 600); }
+    });
+};
+
+window.closeModal = function() {
+    document.getElementById('media-modal').classList.add('hidden');
+    if (typeof SearchAPIs !== 'undefined') SearchAPIs.closeDropdown();
+};
 
 window.saveMedia = function(e) {
     e.preventDefault();
