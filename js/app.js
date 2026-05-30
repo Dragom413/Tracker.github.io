@@ -797,7 +797,7 @@ window.renderCollection = function() {
             if (item.estado === 'Abandonado') { statAbandonados++; return; }
             if (item.totales > 0 && item.vistos >= item.totales) {
                 statCompletados++;
-            } else if (item.estado === 'En curso' || item.vistos > 0) {
+            } else if (item.vistos > 0) {
                 statLeyendo++;
             } else {
                 statPendientes++;
