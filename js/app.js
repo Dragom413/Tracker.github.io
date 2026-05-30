@@ -80,14 +80,8 @@ window.onThemeChange = () => {
 };
 
 // ==========================================
-// 0. CONFIGURACIÓN DE APIs (Panel UI)
+// 0. MENÚ DE CATEGORÍAS
 // ==========================================
-window.toggleAPIPanel = function() {
-    const panel = document.getElementById('api-panel');
-    panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) loadAPIPanelData();
-};
-
 window.toggleCategoryDropdown = function() {
     document.getElementById('category-dropdown').classList.toggle('hidden');
 };
@@ -100,42 +94,6 @@ document.addEventListener('click', function(e) {
     }
 });
 
-window.loadAPIPanelData = function() {
-    const keys = window.loadAPIKeys();
-    document.getElementById('api-tmdb-key').value = keys.TMDB_KEY || '';
-    document.getElementById('api-rawg-key').value = keys.RAWG_KEY || '';
-    updateAPIStatusIndicators();
-};
-
-window.saveAPIPanel = function() {
-    const keys = {
-        TMDB_KEY: document.getElementById('api-tmdb-key').value.trim(),
-        RAWG_KEY: document.getElementById('api-rawg-key').value.trim(),
-    };
-    window.saveAPIKeys(keys);
-    updateAPIStatusIndicators();
-    alert('Configuración de APIs guardada.');
-};
-
-function updateAPIStatusIndicators() {
-    const tmdbOk = window.API_CONFIG.TMDB_ENABLED;
-    const rawgOk = window.API_CONFIG.RAWG_ENABLED;
-    const tmdbDot = document.getElementById('api-tmdb-status');
-    const rawgDot = document.getElementById('api-rawg-status');
-    const tmdbText = document.getElementById('api-tmdb-status-text');
-    const rawgText = document.getElementById('api-rawg-status-text');
-    const indicator = document.getElementById('api-panel-indicator');
-
-    if (tmdbDot) { tmdbDot.className = `w-2 h-2 rounded-full ${tmdbOk ? 'bg-emerald-400' : 'bg-slate-400'}`; }
-    if (rawgDot) { rawgDot.className = `w-2 h-2 rounded-full ${rawgOk ? 'bg-emerald-400' : 'bg-slate-400'}`; }
-    if (tmdbText) { tmdbText.innerText = tmdbOk ? 'Configurada' : 'No configurada'; }
-    if (rawgText) { rawgText.innerText = rawgOk ? 'Configurada' : 'No configurada'; }
-    if (indicator) {
-        const anyConfigured = tmdbOk || rawgOk;
-        indicator.textContent = anyConfigured ? '⚙️✅' : '⚙️';
-    }
-}
-
 // ==========================================
 // 1. LÓGICA DE AUTENTICACIÓN
 // ==========================================
@@ -145,8 +103,12 @@ window.iniciarSesion = function() {
 };
 
 window.cerrarSesion = function() {
-    if (isEntornoLocal()) return;
-    signOut(auth);
+    if (!isEntornoLocal() && usuarioActual) {
+        signOut(auth);
+    } else {
+        document.getElementById('auth-screen').classList.remove('hidden');
+        document.getElementById('app-container').classList.add('hidden');
+    }
 };
 
 window.entrarComoInvitado = function() {
@@ -154,7 +116,6 @@ window.entrarComoInvitado = function() {
     mostrarApp();
     cargarDatosDesdeLocalStorage();
     switchTab('home');
-    setTimeout(updateAPIStatusIndicators, 0);
     startStatusChecker();
 };
 
@@ -170,7 +131,6 @@ async function iniciarAppLocal() {
     mostrarApp();
     cargarDatosDesdeLocalStorage();
     switchTab('home');
-    setTimeout(updateAPIStatusIndicators, 0);
     startStatusChecker();
 }
 
@@ -1108,7 +1068,6 @@ if (isEntornoLocal()) {
             mostrarApp();
             await cargarDatosDesdeFirebase();
             switchTab('home');
-            setTimeout(updateAPIStatusIndicators, 0);
             startStatusChecker();
         } else {
             usuarioActual = null;
