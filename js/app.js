@@ -701,7 +701,7 @@ function renderHomeView() {
         const activeList = mediaData[cat].filter(item => {
             if(cat === 'videojuegos') return item.estado === 'Jugando';
             const completado = item.totales > 0 && item.vistos >= item.totales;
-            return !completado && (item.vistos > 0 || item.estado === 'En curso');
+            return !completado && item.vistos > 0;
         });
 
         if(activeList.length === 0) {
@@ -1322,6 +1322,11 @@ async function renderRecommendations() {
     html += `<button onclick="forceRefreshRecommendations()" ${canRefreshNow ? '' : 'disabled'} class="text-[10px] px-2 py-1 rounded-lg ${canRefreshNow ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 cursor-pointer' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'} transition">🔄 Actualizar</button>`;
     html += `</div></div>`;
 
+    const filteredData = {};
+    for (const [cat, items] of Object.entries(cache.data || {})) {
+        filteredData[cat] = filterNewItems(cat, items);
+    }
+
     const categories = [
         { key: 'comics', icon: '📚', label: 'Cómics' },
         { key: 'series', icon: '📺', label: 'Series' },
@@ -1330,7 +1335,7 @@ async function renderRecommendations() {
     ];
 
     categories.forEach(({ key, icon, label }) => {
-        const items = cache.data?.[key] || [];
+        const items = filteredData[key] || [];
         const genre = cache.topGenres?.[key];
         if (!items.length) return;
         const recId = `rec-${key}`;
