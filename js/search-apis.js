@@ -199,12 +199,13 @@ const SearchAPIs = (() => {
         if (!res.ok) return [];
         const json = await res.json();
 
-        return (json.results || []).map(r => {
+        const results = [];
+        for (const r of (json.results || [])) {
             const year = (r.released || '').substring(0, 4);
             const genres = (r.genres || []).map(g => g.name).join(', ');
             const platforms = (r.platforms || []).map(p => p.platform?.name).filter(Boolean).join(', ');
 
-            return {
+            results.push({
                 titulo: r.name,
                 portada: (r.background_image || r.background_image_additional || '') + '?trim=fit&w=400',
                 genero: genres,
@@ -213,8 +214,9 @@ const SearchAPIs = (() => {
                 subtipo: 'Videojuego',
                 plataforma: platforms || '',
                 sinopsis: '',
-            };
-        });
+            });
+        }
+        return results;
     }
 
     // --- Renderizado del dropdown ---

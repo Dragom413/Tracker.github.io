@@ -884,7 +884,7 @@ window.renderCollection = function() {
 
         card.innerHTML = `
             <div class="aspect-[3/4] ${UI.imgPlaceholder} relative overflow-hidden">
-                <img src="${item.portada}" class="w-full h-full object-cover">
+                <img src="${item.portada}" class="${currentTab === 'videojuegos' ? 'game-cover' : 'w-full h-full object-cover'}">
                 ${rating} ${favBadge} ${platform} ${anioBadge}
                 <span class="absolute top-1.5 right-1.5 ${colorTag} text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow-md">${tagEstado}</span>
                 
@@ -920,6 +920,7 @@ window.renderCollection = function() {
 
 function renderListsView() {
     const wrapper = document.getElementById('lists-wrapper'); wrapper.innerHTML = '';
+    renderRecommendations();
     let allFavs = [];
     ['comics', 'series', 'peliculas', 'videojuegos'].forEach(t => {
         if(mediaData[t]) mediaData[t].forEach(i => { if(i.favorito) allFavs.push({...i, type: t}); });
@@ -930,8 +931,8 @@ function renderListsView() {
     let fHtml = `<div class="flex justify-between items-center border-b ${UI.borderDivider} pb-2"><h3 class="text-sm font-bold text-amber-400">❤️ Mis Favoritos Globales</h3><span class="text-xs bg-amber-400/10 text-amber-400 px-2 rounded">${allFavs.length}</span></div>`;
     if(!allFavs.length) fHtml += `<p class="text-xs ${UI.textDim}">Sin favoritos mapeados.</p>`;
     else {
-        fHtml += `<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">`;
-        allFavs.forEach(f => { fHtml += `<div class="${UI.cardInner}"><img src="${f.portada}" class="aspect-[3/4] w-full object-cover rounded-lg"><p class="text-[10px] truncate text-slate-700 dark:text-slate-300 mt-1">${f.titulo}</p></div>`; });
+        fHtml += `<div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">`;
+        allFavs.forEach(f => { fHtml += `<div class="text-center"><img src="${f.portada}" class="aspect-[3/4] w-full object-cover rounded-lg ${UI.imgPlaceholder}"><p class="text-[9px] truncate text-slate-700 dark:text-slate-300 mt-0.5">${f.titulo}</p></div>`; });
         fHtml += `</div>`;
     }
     favDiv.innerHTML = fHtml; wrapper.appendChild(favDiv);
@@ -948,10 +949,10 @@ function renderListsView() {
     mediaData.customLists.forEach(list => {
         const listDiv = document.createElement('div');
         listDiv.className = UI.card;
-        let itemsHtml = (!list.items.length) ? `<p class="text-xs ${UI.textDim}">Lista vacía.</p>` : `<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">`;
+        let itemsHtml = (!list.items.length) ? `<p class="text-xs ${UI.textDim}">Lista vacía.</p>` : `<div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">`;
         list.items.forEach(ref => {
             const actualItem = mediaData[ref.type]?.find(i => i.id === ref.id);
-            if(actualItem) itemsHtml += `<div class="${UI.cardInner} relative group"><img src="${actualItem.portada}" class="aspect-[3/4] w-full object-cover rounded-lg"><button onclick="removeItemFromList('${list.id}', '${ref.type}', ${ref.id})" class="absolute inset-1.5 bg-rose-950/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition text-[10px] font-bold cursor-pointer">Quitar</button><p class="text-[10px] truncate text-slate-700 dark:text-slate-300 mt-1">${actualItem.titulo}</p></div>`;
+            if(actualItem) itemsHtml += `<div class="relative group"><img src="${actualItem.portada}" class="aspect-[3/4] w-full object-cover rounded-lg ${UI.imgPlaceholder}"><button onclick="removeItemFromList('${list.id}', '${ref.type}', ${ref.id})" class="absolute inset-1 bg-rose-950/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition text-[9px] font-bold cursor-pointer">Quitar</button><p class="text-[9px] truncate text-slate-700 dark:text-slate-300 mt-0.5">${actualItem.titulo}</p></div>`;
         });
         if(list.items.length) itemsHtml += `</div>`;
 
@@ -1055,6 +1056,394 @@ function renderStats() {
         options: { responsive: true, maintainAspectRatio: false, scales: { ...barScaleOpts, x: { ticks: { color: chartColors.ticks, font: { size: 10 } } } }, plugins: { legend: { display: false } } }
     });
 }
+
+// ==========================================
+// SISTEMA DE RECOMENDACIONES
+// ==========================================
+const REC_CACHE_KEY = 'multimedia-recommendations';
+const MAX_REFRESHES = 3;
+const REFRESH_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 horas
+
+function getRecCache() {
+    try { return JSON.parse(localStorage.getItem(REC_CACHE_KEY) || 'null'); } catch (e) { return null; }
+}
+
+function saveRecCache(cache) {
+    localStorage.setItem(REC_CACHE_KEY, JSON.stringify(cache));
+}
+
+function getTopGenres(category) {
+    const items = mediaData[category] || [];
+    const rated = items.filter(i => i.rating && i.rating !== '0');
+    if (!rated.length) return null;
+
+    const genreWeight = {};
+    rated.forEach(item => {
+        const weight = parseFloat(item.rating) || 1;
+        (item.genero || '').split(/,\s*/).map(g => g.trim()).filter(Boolean).forEach(g => {
+            genreWeight[g] = (genreWeight[g] || 0) + weight;
+        });
+    });
+
+    const sorted = Object.entries(genreWeight).sort((a, b) => b[1] - a[1]);
+    return sorted.length ? sorted[0][0] : null;
+}
+
+const TMDB_GENRE_NAME_TO_ID = {
+    'Acción': 28, 'Aventura': 12, 'Animación': 16, 'Comedia': 35, 'Crimen': 80,
+    'Documental': 99, 'Drama': 18, 'Familiar': 10751, 'Fantasía': 14, 'Historia': 36,
+    'Terror': 27, 'Música': 10402, 'Misterio': 9648, 'Romance': 10749,
+    'Ciencia Ficción': 878, 'Suspense': 53, 'Bélico': 10752, 'Western': 37,
+    'Acción y Aventura': 10759, 'Infantil': 10762,
+};
+
+const RAWG_GENRE_SLUGS = {
+    'Acción': 'action', 'Aventura': 'adventures', 'Comedia': 'casual',
+    'Estrategia': 'strategy', 'RPG': 'role-playing-games-rpg',
+    'Deportes': 'sports', 'Carreras': 'racing', 'Puzzle': 'puzzle',
+    'Terror': 'horror', 'Simulación': 'simulation', 'Indie': 'indie',
+    'Arcade': 'arcade', 'Plataformas': 'platformers', 'Lucha': 'fighting',
+};
+
+async function fetchAnilistRecommendations(genre, type, page = 1) {
+    const graphql = JSON.stringify({
+        query: `query ($genre: String, $page: Int) {
+            Page(page: $page, perPage: 10) {
+                media(genre: $genre, type: ${type}, sort: POPULARITY_DESC, countryOfOrigin: "JP") {
+                    title { romaji, english }
+                    coverImage { large }
+                    genres
+                    startDate { year }
+                    ${type === 'MANGA' ? 'chapters' : 'episodes'}
+                    format
+                    description(asHtml: false)
+                }
+            }
+        }`,
+        variables: { genre, page },
+    });
+
+    const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: graphql,
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data?.Page?.media || []).map(m => ({
+        titulo: m.title.english || m.title.romaji,
+        portada: m.coverImage.large,
+        genero: (m.genres || []).join(', '),
+        anio: m.startDate.year || '',
+    }));
+}
+
+async function fetchTMDBRecommendations(genreName, page = 1) {
+    const genreId = TMDB_GENRE_NAME_TO_ID[genreName];
+    if (!genreId) return [];
+    const key = window.API_CONFIG.TMDB_KEY;
+    const url = `https://api.themoviedb.org/3/discover/movie?api_key=${key}&language=es-ES&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100&page=${page}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.results || []).slice(0, 10).map(r => ({
+        titulo: r.title,
+        portada: r.poster_path ? 'https://image.tmdb.org/t/p/w500' + r.poster_path : '',
+        genero: (r.genre_ids || []).map(id => {
+            const map = { 28:'Acción',12:'Aventura',16:'Animación',35:'Comedia',80:'Crimen',99:'Documental',18:'Drama',10751:'Familiar',14:'Fantasía',36:'Historia',27:'Terror',10402:'Música',9648:'Misterio',10749:'Romance',878:'Ciencia Ficción',53:'Suspense',10752:'Bélico',37:'Western' };
+            return map[id] || '';
+        }).filter(Boolean).join(', '),
+        anio: (r.release_date || '').substring(0, 4),
+    }));
+}
+
+const TMDB_TV_GENRE_NAME_TO_ID = {
+    'Acción y Aventura': 10759, 'Animación': 16, 'Comedia': 35, 'Crimen': 80,
+    'Documental': 99, 'Drama': 18, 'Familiar': 10751, 'Infantil': 10762,
+    'Misterio': 9648, 'Noticias': 10763, 'Reality': 10764, 'Ciencia Ficción': 878,
+    'Soap': 10766, 'Talk': 10767, 'Guerra y Política': 10768, 'Western': 37,
+    'Acción': 10759, 'Aventura': 10759, 'Terror': 9648, 'Suspenso': 9648,
+    'Romance': 18, 'Fantasía': 18, 'Historia': 18,
+};
+
+async function fetchTMDBSeriesRecommendations(genreName, page = 1) {
+    const genreId = TMDB_TV_GENRE_NAME_TO_ID[genreName];
+    if (!genreId) return [];
+    const key = window.API_CONFIG.TMDB_KEY;
+    const url = `https://api.themoviedb.org/3/discover/tv?api_key=${key}&language=es-ES&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=50&page=${page}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.results || []).slice(0, 10).map(r => ({
+        titulo: r.name,
+        portada: r.poster_path ? 'https://image.tmdb.org/t/p/w500' + r.poster_path : '',
+        genero: (r.genre_ids || []).map(id => {
+            const map = { 10759:'Acción y Aventura',16:'Animación',35:'Comedia',80:'Crimen',99:'Documental',18:'Drama',10751:'Familiar',10762:'Infantil',9648:'Misterio',878:'Ciencia Ficción',10768:'Guerra y Política',37:'Western' };
+            return map[id] || '';
+        }).filter(Boolean).join(', '),
+        anio: (r.first_air_date || '').substring(0, 4),
+    }));
+}
+
+async function fetchRAWGRecommendations(genreSlug, page = 1) {
+    const key = window.API_CONFIG.RAWG_KEY;
+    const url = `https://api.rawg.io/api/games?key=${key}&genres=${genreSlug}&ordering=-rating&page_size=10&exclude_additions=true&page=${page}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.results || []).map(r => ({
+        titulo: r.name,
+        portada: (r.background_image || '') + '?trim=fit&w=400',
+        genero: (r.genres || []).map(g => g.name).join(', '),
+        anio: (r.released || '').substring(0, 4),
+    }));
+}
+
+function filterNewItems(category, results) {
+    const existing = (mediaData[category] || []).map(i => i.titulo.toLowerCase());
+    return results.filter(r => !existing.includes(r.titulo.toLowerCase())).slice(0, 8);
+}
+
+async function getRecommendations() {
+    const cache = getRecCache();
+    const topGenres = {};
+
+    ['comics', 'series', 'peliculas', 'videojuegos'].forEach(cat => {
+        topGenres[cat] = getTopGenres(cat);
+    });
+
+    const hasAnyGenre = Object.values(topGenres).some(Boolean);
+    if (!hasAnyGenre) return null;
+
+    const startPage = (cache && cache.page) || 1;
+    const data = {};
+
+    async function fillCategory(genre, fetchFn, category) {
+        let allResults = [];
+        for (let p = startPage; p <= startPage + 3 && allResults.length < 8; p++) {
+            const results = await fetchFn(genre, p);
+            const newItems = filterNewItems(category, results);
+            allResults = allResults.concat(newItems);
+            if (results.length < 5) break;
+        }
+        return allResults.slice(0, 8);
+    }
+
+    if (topGenres.comics) {
+        data.comics = await fillCategory(topGenres.comics, (g, p) => fetchAnilistRecommendations(g, 'MANGA', p), 'comics');
+    }
+    if (topGenres.series) {
+        data.series = await fillCategory(topGenres.series, (g, p) => fetchTMDBSeriesRecommendations(g, p), 'series');
+    }
+    if (topGenres.peliculas) {
+        data.peliculas = await fillCategory(topGenres.peliculas, (g, p) => fetchTMDBRecommendations(g, p), 'peliculas');
+    }
+    if (topGenres.videojuegos) {
+        const genreSlug = RAWG_GENRE_SLUGS[topGenres.videojuegos] || 'action';
+        data.videojuegos = await fillCategory(genreSlug, (g, p) => fetchRAWGRecommendations(g, p), 'videojuegos');
+    }
+
+    const newCache = {
+        data,
+        topGenres,
+        timestamp: Date.now(),
+        refreshCount: cache ? cache.refreshCount : 0,
+        page: startPage,
+    };
+    saveRecCache(newCache);
+    return newCache;
+}
+
+function canRefresh() {
+    if (isEntornoLocal()) return true;
+    const cache = getRecCache();
+    if (!cache) return false;
+    const isExpired = (Date.now() - cache.timestamp) > REFRESH_WINDOW_MS;
+    if (isExpired) return true;
+    return cache.refreshCount < MAX_REFRESHES;
+}
+
+window.forceRefreshRecommendations = async function() {
+    if (!canRefresh()) return;
+    if (!isEntornoLocal()) {
+        const cache = getRecCache();
+        if (cache) cache.refreshCount++;
+        saveRecCache(cache || { refreshCount: 1, timestamp: Date.now(), data: {}, topGenres: {}, page: 1 });
+    }
+
+    const currentCache = getRecCache();
+    const nextPage = currentCache ? ((currentCache.page || 1) % 3) + 1 : 1;
+    const tempCache = getRecCache() || {};
+    tempCache.page = nextPage;
+    saveRecCache(tempCache);
+
+    const recs = await getRecommendations();
+    if (recs && !isEntornoLocal()) {
+        const cache = getRecCache();
+        recs.refreshCount = cache ? cache.refreshCount : 1;
+        saveRecCache(recs);
+    }
+    renderRecommendations();
+};
+
+async function renderRecommendations() {
+    const container = document.getElementById('recommendations-container');
+    if (!container) return;
+
+    let cache = getRecCache();
+    const hasAnyGenre = ['comics', 'series', 'peliculas', 'videojuegos'].some(cat => getTopGenres(cat));
+
+    if (!hasAnyGenre) {
+        container.innerHTML = '';
+        return;
+    }
+
+    if (!cache) {
+        container.innerHTML = `<div class="${UI.card}"><div class="flex justify-between items-center border-b ${UI.borderDivider} pb-2"><h3 class="text-sm font-bold text-indigo-400">✨ Recomendaciones para ti</h3><span class="text-[10px] ${UI.textDim}">Generando...</span></div><div class="flex justify-center py-8"><div class="animate-spin w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full"></div></div></div>`;
+        cache = await getRecommendations();
+        if (!cache) { container.innerHTML = ''; return; }
+    }
+
+    const isExpired = (Date.now() - cache.timestamp) > REFRESH_WINDOW_MS;
+    const isLocal = isEntornoLocal();
+    const refreshesLeft = isLocal ? '∞' : (isExpired ? MAX_REFRESHES : Math.max(0, MAX_REFRESHES - (cache.refreshCount || 0)));
+    const canRefreshNow = isLocal || refreshesLeft > 0 || isExpired;
+
+    const genreLabels = Object.entries(cache.topGenres || {}).filter(([, v]) => v).map(([, v]) => v);
+    const timeAgo = getTimeAgo(cache.timestamp);
+
+    let html = `<div class="${UI.card}">`;
+    html += `<div class="flex flex-col sm:flex-row sm:items-center justify-between border-b ${UI.borderDivider} pb-2 gap-2">`;
+    html += `<div><h3 class="text-sm font-bold text-indigo-400">✨ Recomendaciones para ti</h3>`;
+    if (genreLabels.length) html += `<p class="text-[10px] ${UI.textDim}">Basado en: ${genreLabels.join(', ')}</p>`;
+    html += `</div>`;
+    html += `<div class="flex items-center gap-2">`;
+    html += `<span class="text-[10px] ${UI.textDim}">${timeAgo}${isLocal ? '' : ' · ' + refreshesLeft + '/' + MAX_REFRESHES}</span>`;
+    html += `<button onclick="forceRefreshRecommendations()" ${canRefreshNow ? '' : 'disabled'} class="text-[10px] px-2 py-1 rounded-lg ${canRefreshNow ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 cursor-pointer' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'} transition">🔄 Actualizar</button>`;
+    html += `</div></div>`;
+
+    const categories = [
+        { key: 'comics', icon: '📚', label: 'Cómics' },
+        { key: 'series', icon: '📺', label: 'Series' },
+        { key: 'peliculas', icon: '🎬', label: 'Películas' },
+        { key: 'videojuegos', icon: '🎮', label: 'Videojuegos' },
+    ];
+
+    categories.forEach(({ key, icon, label }) => {
+        const items = cache.data?.[key] || [];
+        const genre = cache.topGenres?.[key];
+        if (!items.length) return;
+        const recId = `rec-${key}`;
+        html += `<div class="mt-3 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">`;
+        html += `<button onclick="document.getElementById('${recId}').classList.toggle('hidden'); this.querySelector('.rec-arrow').classList.toggle('rotate-90')" class="w-full flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 transition cursor-pointer">`;
+        html += `<div class="flex items-center gap-2"><span class="text-[10px] rec-arrow transition-transform">▶</span><span class="text-[10px] font-bold ${UI.textMuted}">${icon} ${label}${genre ? ` (${genre})` : ''}</span></div>`;
+        html += `<span class="text-[9px] ${UI.textDim}">${items.length} resultados</span>`;
+        html += `</button>`;
+        html += `<div id="${recId}" class="hidden px-3 py-2">`;
+        html += `<div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">`;
+        items.forEach(item => {
+            html += `<div class="cursor-pointer hover:opacity-80 transition" onclick="window.addRecommendation('${item.titulo.replace(/'/g, "\\'")}', '${key}', '${(item.portada || '').replace(/'/g, "\\'")}', '${(item.genero || '').replace(/'/g, "\\'")}', '${item.anio || ''}')">`;
+            html += `<img src="${item.portada}" class="${key === 'videojuegos' ? 'game-cover' : 'aspect-[3/4] w-full object-cover rounded-lg'} ${UI.imgPlaceholder}" onerror="this.src='https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400'">`;
+            html += `<p class="text-[9px] truncate text-slate-700 dark:text-slate-300 mt-0.5">${item.titulo}</p>`;
+            html += `</div>`;
+        });
+        html += `</div></div></div>`;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+function getTimeAgo(timestamp) {
+    const diff = Date.now() - timestamp;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Ahora';
+    if (mins < 60) return `Hace ${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `Hace ${hours}h`;
+    return `Hace ${Math.floor(hours / 24)}d`;
+}
+
+window.addRecommendation = async function(titulo, category, portada, genero, anio) {
+    const existingItem = (mediaData[category] || []).find(i => i.titulo.toLowerCase() === titulo.toLowerCase());
+    if (existingItem) {
+        alert(`"${titulo}" ya está en tu colección de ${category}.`);
+        return;
+    }
+
+    const defaultStates = {
+        comics: 'Por emitir',
+        series: 'Por emitir',
+        peliculas: 'No Visto',
+        videojuegos: 'Por Jugar',
+    };
+    const defaultState = defaultStates[category] || 'Por emitir';
+
+    if (!confirm(`¿Añadir "${titulo}" a ${category}?\nEstado: ${defaultState}`)) return;
+
+    let totales = 0;
+    let externalId = '';
+    let subtipo = '';
+
+    if (category === 'comics' || category === 'series') {
+        try {
+            const type = category === 'comics' ? 'MANGA' : 'ANIME';
+            const graphql = JSON.stringify({
+                query: `query ($search: String) {
+                    Media(search: $search, type: ${type}) {
+                        id
+                        ${type === 'MANGA' ? 'chapters' : 'episodes'}
+                        format
+                        status
+                    }
+                }`,
+                variables: { search: titulo },
+            });
+            const res = await fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: graphql,
+            });
+            if (res.ok) {
+                const json = await res.json();
+                const m = json.data?.Media;
+                if (m) {
+                    externalId = m.id || '';
+                    subtipo = m.format || '';
+                    const isOngoing = m.status === 'RELEASING' || m.status === 'HIATUS';
+                    if (isOngoing) {
+                        totales = 0;
+                    } else {
+                        totales = (type === 'MANGA' ? m.chapters : m.episodes) || 0;
+                    }
+                }
+            }
+        } catch (e) { /* Sin conexión, se queda totales=0 */ }
+    }
+
+    const newItem = {
+        id: Date.now(),
+        titulo,
+        subtipo,
+        genero: genero || '',
+        anio: anio || '',
+        estado: defaultState,
+        totales,
+        vistos: 0,
+        portada: portada || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=400',
+        rating: '0',
+        plataforma: '',
+        notas: '',
+        resena: '',
+        favorito: false,
+        externalId: String(externalId),
+    };
+
+    mediaData[category].push(newItem);
+    window.saveToStorage();
+    const totalesInfo = totales > 0 ? ` (${totales} ${category === 'comics' ? 'capítulos' : 'episodios'})` : ' (en emisión)';
+    alert(`"${titulo}" añadido a ${category} como "${defaultState}"${category === 'comics' || category === 'series' ? totalesInfo : ''}.`);
+};
 
 // ==========================================
 // INICIALIZACIÓN (al final para que todas las window.* estén definidas)
