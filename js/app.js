@@ -149,6 +149,17 @@ window.cerrarSesion = function() {
     signOut(auth);
 };
 
+window.entrarComoInvitado = function() {
+    document.title = 'Media Tracker Pro (Invitado)';
+    mostrarApp();
+    const btnSalir = document.querySelector('[onclick="cerrarSesion()"]');
+    if (btnSalir) btnSalir.classList.add('hidden');
+    cargarDatosDesdeLocalStorage();
+    switchTab('home');
+    setTimeout(updateAPIStatusIndicators, 0);
+    startStatusChecker();
+};
+
 function mostrarApp() {
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('app-container').classList.remove('hidden');
@@ -170,26 +181,6 @@ function cargarDatosDesdeLocalStorage() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) mediaData = JSON.parse(raw);
     } catch (e) { console.error("Error al cargar datos locales:", e); }
-}
-
-if (isEntornoLocal()) {
-    iniciarAppLocal();
-} else {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            usuarioActual = user;
-            mostrarApp();
-            await cargarDatosDesdeFirebase();
-            switchTab('home');
-            setTimeout(updateAPIStatusIndicators, 0);
-            startStatusChecker();
-        } else {
-            usuarioActual = null;
-            mediaData = { comics: [], series: [], peliculas: [], videojuegos: [], customLists: [] };
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('app-container').classList.add('hidden');
-        }
-    });
 }
 
 // ==========================================
@@ -388,6 +379,8 @@ window.switchTab = function(tab) {
             unidadesContainer.classList.remove('hidden');
             document.getElementById('form-plataforma').required = false;
             ratingContainer.className = "col-span-2";
+            document.getElementById('box-stat-abandonados').classList.remove('hidden');
+            document.getElementById('stats-header-grid').className = "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6";
         }
 
         document.getElementById('gallery-title').innerText = tab === 'comics' ? 'Mis Cómics & Mangas' : tab === 'series' ? 'Mis Series & Anime' : tab === 'peliculas' ? 'Mis Películas' : 'Mis Videojuegos';
@@ -485,10 +478,10 @@ window.selectSearchResult = function(item) {
         document.getElementById('form-estado').value = item.apiStatus;
         if (item.apiStatus === 'En curso') {
             document.getElementById('form-totales').value = 0;
-        } else if (item.totales) {
+        } else if (item.totales != null) {
             document.getElementById('form-totales').value = item.totales;
         }
-    } else if (item.totales) {
+    } else if (item.totales != null) {
         document.getElementById('form-totales').value = item.totales;
     }
 
@@ -615,16 +608,16 @@ async function fetchTMDBStatus(tmdbId) {
         const res = await fetch(url);
         if (!res.ok) return null;
         const data = await res.json();
-        const mapStatus = (s) => {
-            if (!s) return 'Por emitir';
-            if (s === 'Returning Series' || s === 'In Production') return 'En curso';
+        const mapStatus = (s, inProd) => {
+            if (s === 'Returning Series' || s === 'In Production' || inProd) return 'En curso';
             if (s === 'Ended') return 'Finalizado';
+            if (s === 'Canceled') return 'Abandonado';
             return 'Por emitir';
         };
         const total = (data.seasons || [])
             .filter(s => s.season_number > 0)
             .reduce((sum, s) => sum + (s.episode_count || 0), 0);
-        return { status: mapStatus(data.status), episodes: total || null };
+        return { status: mapStatus(data.status, data.in_production), episodes: total || null };
     } catch (e) { return null; }
 }
 
@@ -803,7 +796,7 @@ window.renderCollection = function() {
             statVistos += item.vistos;
         } else {
             statVistos += item.vistos;
-            if (item.estado === 'Abandonado') return;
+            if (item.estado === 'Abandonado') { statAbandonados++; return; }
             if (item.totales > 0 && item.vistos >= item.totales) {
                 statCompletados++;
             } else if (item.estado === 'En curso' || item.vistos > 0) {
@@ -946,10 +939,10 @@ window.renderCollection = function() {
                         <button onclick="deleteMedia(${item.id})" class="flex-1 py-1.5 ${UI.btnSurface} hover:bg-rose-600 hover:text-white rounded-xl text-[11px] font-semibold text-rose-500 cursor-pointer">Borrar</button>
                     </div>
                     <button onclick="toggleFavorito(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl ${favActive} cursor-pointer">❤️ Favorito</button>
-                    ${item.estado !== 'Abandonado' 
+                    ${currentTab !== 'peliculas' ? (item.estado !== 'Abandonado' 
                         ? `<button onclick="toggleAbandonado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl text-rose-400 cursor-pointer">🚫 Abandonar</button>`
                         : `<button onclick="toggleAbandonado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl text-emerald-400 cursor-pointer">▶️ Reanudar</button>`
-                    }
+                    ) : ''}
                 </div>
             </div>
             <div class="p-3 flex flex-col justify-between flex-1 gap-1">
@@ -1102,5 +1095,28 @@ function renderStats() {
         type: 'bar',
         data: { labels: sortedYears.length ? sortedYears : ['Sin fechas'], datasets: [{ label: 'Lanzamientos', data: sortedYears.length ? sortedYears.map(y => anioMap[y]) : [0], backgroundColor: '#10b981', borderRadius: 4 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { ...barScaleOpts, x: { ticks: { color: chartColors.ticks, font: { size: 10 } } } }, plugins: { legend: { display: false } } }
+    });
+}
+
+// ==========================================
+// INICIALIZACIÓN (al final para que todas las window.* estén definidas)
+// ==========================================
+if (isEntornoLocal()) {
+    iniciarAppLocal();
+} else {
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            usuarioActual = user;
+            mostrarApp();
+            await cargarDatosDesdeFirebase();
+            switchTab('home');
+            setTimeout(updateAPIStatusIndicators, 0);
+            startStatusChecker();
+        } else {
+            usuarioActual = null;
+            mediaData = { comics: [], series: [], peliculas: [], videojuegos: [], customLists: [] };
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('app-container').classList.add('hidden');
+        }
     });
 }

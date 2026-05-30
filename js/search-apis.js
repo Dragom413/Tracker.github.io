@@ -105,7 +105,7 @@ const SearchAPIs = (() => {
     }
 
     // --- TMDB (Películas / Series) ---
-    async function getTMDBTotalEpisodes(tvId) {
+    async function getTMDBDetails(tvId) {
         const key = window.API_CONFIG.TMDB_KEY;
         try {
             const url = `https://api.themoviedb.org/3/tv/${tvId}?api_key=${encodeURIComponent(key)}&language=es-ES`;
@@ -115,7 +115,11 @@ const SearchAPIs = (() => {
             const total = (data.seasons || [])
                 .filter(s => s.season_number > 0)
                 .reduce((sum, s) => sum + (s.episode_count || 0), 0);
-            return total || null;
+            return {
+                episodes: total || null,
+                status: data.status,
+                inProduction: data.in_production || false,
+            };
         } catch (e) { return null; }
     }
 
@@ -131,10 +135,10 @@ const SearchAPIs = (() => {
         const json = await res.json();
         const results = (json.results || []).slice(0, MAX_RESULTS);
 
-        const mapTMDBStatus = (s) => {
-            if (!s) return 'Por emitir';
-            if (s === 'Returning Series' || s === 'In Production') return 'En curso';
+        const mapTMDBStatus = (s, inProd) => {
+            if (s === 'Returning Series' || s === 'In Production' || inProd) return 'En curso';
             if (s === 'Ended') return 'Finalizado';
+            if (s === 'Canceled') return 'Abandonado';
             return 'Por emitir';
         };
 
@@ -150,13 +154,22 @@ const SearchAPIs = (() => {
             subtipo: type === 'peliculas' ? 'Película' : 'Serie',
             plataforma: '',
             sinopsis: r.overview || '',
-            apiStatus: mapTMDBStatus(r.status),
+            apiStatus: mapTMDBStatus(r.status, false),
             _tmdbId: r.id,
         }));
 
         if (type === 'series') {
-            const totals = await Promise.all(mapped.map(r => getTMDBTotalEpisodes(r._tmdbId)));
-            mapped.forEach((r, i) => { r.totales = totals[i]; });
+            const details = await Promise.all(mapped.map(r => getTMDBDetails(r._tmdbId)));
+            mapped.forEach((r, i) => {
+                if (details[i]) {
+                    r.apiStatus = mapTMDBStatus(details[i].status, details[i].inProduction);
+                    if (r.apiStatus === 'En curso') {
+                        r.totales = 0;
+                    } else {
+                        r.totales = details[i].episodes;
+                    }
+                }
+            });
         }
 
         return mapped;

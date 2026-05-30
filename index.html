@@ -23,9 +23,15 @@
         <span class="text-6xl">📊</span>
         <h1 class="text-3xl font-bold tracking-wider text-indigo-400 font-mono">MULTIMEDIA.io</h1>
         <p class="text-sm text-slate-600 dark:text-slate-400 max-w-sm leading-relaxed">Inicia sesión para sincronizar y proteger tu colección multimedia en la nube.</p>
-        <button onclick="iniciarSesion()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-3 px-6 rounded-xl transition shadow-lg cursor-pointer">
-            Inicia Sesión con Google
-        </button>
+        <div class="flex flex-col gap-3">
+            <button onclick="iniciarSesion()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-3 px-6 rounded-xl transition shadow-lg cursor-pointer">
+                Inicia Sesión con Google
+            </button>
+            <button onclick="entrarComoInvitado()" class="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium py-2.5 px-6 rounded-xl transition border border-slate-300 dark:border-slate-700 cursor-pointer">
+                Entrar como Invitado
+            </button>
+        </div>
+        <p class="text-[10px] text-slate-400 dark:text-slate-500 max-w-xs leading-relaxed">⚠️ Como invitado, tus datos se guardan solo en este navegador. No habrá respaldo en la nube.</p>
     </div>
 
     <div id="app-container" class="hidden flex-col min-h-screen">
