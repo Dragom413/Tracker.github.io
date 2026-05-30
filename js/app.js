@@ -152,8 +152,6 @@ window.cerrarSesion = function() {
 window.entrarComoInvitado = function() {
     document.title = 'Media Tracker Pro (Invitado)';
     mostrarApp();
-    const btnSalir = document.querySelector('[onclick="cerrarSesion()"]');
-    if (btnSalir) btnSalir.classList.add('hidden');
     cargarDatosDesdeLocalStorage();
     switchTab('home');
     setTimeout(updateAPIStatusIndicators, 0);
