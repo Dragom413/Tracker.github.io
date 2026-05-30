@@ -393,6 +393,14 @@ window.openModal = function(mode, id = null) {
         document.getElementById('form-notas').value = "";
         document.getElementById('form-resena').value = "";
 
+        const apiSourceContainer = document.getElementById('modal-api-source-container');
+        if (currentTab === 'comics') {
+            apiSourceContainer.classList.remove('hidden');
+            document.getElementById('modal-api-source').value = 'anilist';
+        } else {
+            apiSourceContainer.classList.add('hidden');
+        }
+
         const tituloInput = document.getElementById('form-titulo');
         tituloInput.oninput = function() {
             if (typeof SearchAPIs !== 'undefined') {
@@ -429,7 +437,7 @@ window.selectSearchResult = function(item) {
     if (item.plataforma) document.getElementById('form-plataforma').value = item.plataforma;
     if (item.sinopsis) document.getElementById('form-notas').value = item.sinopsis;
 
-    const externalId = item._anilistId || item._tmdbId || '';
+    const externalId = item._anilistId || item._tmdbId || item._comicvineId || '';
     document.getElementById('form-external-id').value = externalId;
 
     if (item.apiStatus) {
@@ -1089,6 +1097,24 @@ function getTopGenres(category) {
     return sorted.length ? sorted[0][0] : null;
 }
 
+function getTopSeriesNames(category, count) {
+    const items = mediaData[category] || [];
+    return items
+        .filter(i => i.rating && i.rating !== '0')
+        .sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0))
+        .slice(0, count)
+        .map(i => i.titulo);
+}
+
+async function fetchComicVineBySeriesNames(names) {
+    let allResults = [];
+    for (const name of names) {
+        const results = await fetchComicVineRecommendations(name);
+        allResults = allResults.concat(results);
+    }
+    return filterNewItems('comics', allResults).slice(0, 8);
+}
+
 const TMDB_GENRE_NAME_TO_ID = {
     'Acción': 28, 'Aventura': 12, 'Animación': 16, 'Comedia': 35, 'Crimen': 80,
     'Documental': 99, 'Drama': 18, 'Familiar': 10751, 'Fantasía': 14, 'Historia': 36,
@@ -1136,6 +1162,29 @@ async function fetchAnilistRecommendations(genre, type, page = 1) {
         genero: (m.genres || []).join(', '),
         anio: m.startDate.year || '',
     }));
+}
+
+async function fetchComicVineRecommendations(query, page = 1) {
+    const key = window.API_CONFIG.COMICVINE_KEY;
+    if (!key) return [];
+
+    const apiUrl = `https://comicvine.gamespot.com/api/search/?api_key=${encodeURIComponent(key)}&format=json&resources=volume&query=${encodeURIComponent(query)}&page=${page}`;
+    const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) return [];
+        const json = await res.json();
+        return (json.results || []).filter(r => r.name).slice(0, 10).map(r => ({
+            titulo: r.name || '',
+            portada: r.image?.super_url || r.image?.medium_url || r.image?.original_url || r.image?.thumb_url || '',
+            genero: '',
+            anio: r.start_year || '',
+        }));
+    } catch (e) {
+        console.warn('[MULTIMEDIA.io] Error Comic Vine recommendations:', e);
+        return [];
+    }
 }
 
 async function fetchTMDBRecommendations(genreName, page = 1) {
@@ -1230,7 +1279,11 @@ async function getRecommendations() {
     }
 
     if (topGenres.comics) {
-        data.comics = await fillCategory(topGenres.comics, (g, p) => fetchAnilistRecommendations(g, 'MANGA', p), 'comics');
+        data.comics_anilist = await fillCategory(topGenres.comics, (g, p) => fetchAnilistRecommendations(g, 'MANGA', p), 'comics');
+        const topNames = getTopSeriesNames('comics', 5);
+        if (topNames.length) {
+            data.comics_cv = await fetchComicVineBySeriesNames(topNames);
+        }
     }
     if (topGenres.series) {
         data.series = await fillCategory(topGenres.series, (g, p) => fetchTMDBSeriesRecommendations(g, p), 'series');
@@ -1328,7 +1381,8 @@ async function renderRecommendations() {
     }
 
     const categories = [
-        { key: 'comics', icon: '📚', label: 'Cómics' },
+        { key: 'comics_anilist', icon: '📚', label: 'Cómics - Manga/Manhwa' },
+        { key: 'comics_cv', icon: '📚', label: 'Cómics - Marvel/DC/Image' },
         { key: 'series', icon: '📺', label: 'Series' },
         { key: 'peliculas', icon: '🎬', label: 'Películas' },
         { key: 'videojuegos', icon: '🎮', label: 'Videojuegos' },
@@ -1336,7 +1390,7 @@ async function renderRecommendations() {
 
     categories.forEach(({ key, icon, label }) => {
         const items = filteredData[key] || [];
-        const genre = cache.topGenres?.[key];
+        const genre = cache.topGenres?.[key] || cache.topGenres?.comics;
         if (!items.length) return;
         const recId = `rec-${key}`;
         html += `<div class="mt-3 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">`;
@@ -1370,9 +1424,10 @@ function getTimeAgo(timestamp) {
 }
 
 window.addRecommendation = async function(titulo, category, portada, genero, anio) {
-    const existingItem = (mediaData[category] || []).find(i => i.titulo.toLowerCase() === titulo.toLowerCase());
+    const actualCategory = category.replace('_anilist', '').replace('_cv', '');
+    const existingItem = (mediaData[actualCategory] || []).find(i => i.titulo.toLowerCase() === titulo.toLowerCase());
     if (existingItem) {
-        alert(`"${titulo}" ya está en tu colección de ${category}.`);
+        alert(`"${titulo}" ya está en tu colección de ${actualCategory}.`);
         return;
     }
 
@@ -1382,17 +1437,17 @@ window.addRecommendation = async function(titulo, category, portada, genero, ani
         peliculas: 'No Visto',
         videojuegos: 'Por Jugar',
     };
-    const defaultState = defaultStates[category] || 'Por emitir';
+    const defaultState = defaultStates[actualCategory] || 'Por emitir';
 
-    if (!confirm(`¿Añadir "${titulo}" a ${category}?\nEstado: ${defaultState}`)) return;
+    if (!confirm(`¿Añadir "${titulo}" a ${actualCategory}?\nEstado: ${defaultState}`)) return;
 
     let totales = 0;
     let externalId = '';
     let subtipo = '';
 
-    if (category === 'comics' || category === 'series') {
+    if (actualCategory === 'comics' || actualCategory === 'series') {
         try {
-            const type = category === 'comics' ? 'MANGA' : 'ANIME';
+            const type = actualCategory === 'comics' ? 'MANGA' : 'ANIME';
             const graphql = JSON.stringify({
                 query: `query ($search: String) {
                     Media(search: $search, type: ${type}) {
@@ -1444,10 +1499,10 @@ window.addRecommendation = async function(titulo, category, portada, genero, ani
         externalId: String(externalId),
     };
 
-    mediaData[category].push(newItem);
+    mediaData[actualCategory].push(newItem);
     window.saveToStorage();
-    const totalesInfo = totales > 0 ? ` (${totales} ${category === 'comics' ? 'capítulos' : 'episodios'})` : ' (en emisión)';
-    alert(`"${titulo}" añadido a ${category} como "${defaultState}"${category === 'comics' || category === 'series' ? totalesInfo : ''}.`);
+    const totalesInfo = totales > 0 ? ` (${totales} ${actualCategory === 'comics' ? 'capítulos' : 'episodios'})` : ' (en emisión)';
+    alert(`"${titulo}" añadido a ${actualCategory} como "${defaultState}"${actualCategory === 'comics' || actualCategory === 'series' ? totalesInfo : ''}.`);
 };
 
 // ==========================================

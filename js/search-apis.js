@@ -104,6 +104,45 @@ const SearchAPIs = (() => {
         }];
     }
 
+    // --- Comic Vine (Comics occidentales) ---
+    async function searchComicVine(query) {
+        const key = window.API_CONFIG.COMICVINE_KEY;
+        if (!key) return [];
+
+        const apiUrl = `https://comicvine.gamespot.com/api/search/?api_key=${encodeURIComponent(key)}&format=json&resources=volume&query=${encodeURIComponent(query)}`;
+        const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
+
+        try {
+            const res = await fetch(url, { signal: abortController?.signal });
+            if (!res.ok) return [];
+            const json = await res.json();
+            const results = json.results || [];
+
+            const byName = {};
+            results.filter(r => r.name).forEach(r => {
+                if (!byName[r.name] || (r.start_year || 9999) < (byName[r.name].start_year || 9999)) {
+                    byName[r.name] = r;
+                }
+            });
+
+            return Object.values(byName).slice(0, MAX_RESULTS).map(r => ({
+                titulo: r.name || '',
+                portada: r.image?.super_url || r.image?.medium_url || r.image?.original_url || r.image?.thumb_url || '',
+                genero: '',
+                anio: r.start_year || '',
+                totales: r.count_of_issues || 0,
+                subtipo: 'Comic',
+                plataforma: r.publisher?.name || '',
+                sinopsis: '',
+                apiStatus: 'Por emitir',
+                _comicvineId: r.id,
+            }));
+        } catch (e) {
+            console.warn('[MULTIMEDIA.io] Error Comic Vine:', e);
+            return [];
+        }
+    }
+
     // --- TMDB (Películas / Series) ---
     async function getTMDBDetails(tvId) {
         const key = window.API_CONFIG.TMDB_KEY;
@@ -280,7 +319,12 @@ const SearchAPIs = (() => {
             try {
                 let results = [];
                 if (category === 'comics') {
-                    results = await searchAnilist(query);
+                    const source = document.getElementById('modal-api-source')?.value || 'anilist';
+                    if (source === 'comicvine') {
+                        results = await searchComicVine(query);
+                    } else {
+                        results = await searchAnilist(query);
+                    }
                 } else if (category === 'series') {
                     const anilistResults = await searchAnilistTV(query);
                     if (window.API_CONFIG.TMDB_ENABLED) {
