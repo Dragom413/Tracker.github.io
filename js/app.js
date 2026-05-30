@@ -873,7 +873,7 @@ window.renderCollection = function() {
             } else if (item.estado === 'Abandonado') { 
                 tagEstado = 'Abandonado'; 
                 colorTag = 'bg-rose-600 text-white'; 
-            } else if (item.estado === 'En curso' || item.vistos > 0) { 
+            } else if (item.vistos > 0) { 
                 tagEstado = (currentTab === 'comics') ? 'Leyendo' : 'Viendo'; 
                 colorTag = 'bg-blue-500'; 
             } else { 
