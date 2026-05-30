@@ -1169,22 +1169,28 @@ async function fetchComicVineRecommendations(query, page = 1) {
     if (!key) return [];
 
     const apiUrl = `https://comicvine.gamespot.com/api/search/?api_key=${encodeURIComponent(key)}&format=json&resources=volume&query=${encodeURIComponent(query)}&page=${page}`;
-    const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
 
+    let data = null;
     try {
-        const res = await fetch(url);
-        if (!res.ok) return [];
-        const json = await res.json();
-        return (json.results || []).filter(r => r.name).slice(0, 10).map(r => ({
-            titulo: r.name || '',
-            portada: r.image?.super_url || r.image?.medium_url || r.image?.original_url || r.image?.thumb_url || '',
-            genero: '',
-            anio: r.start_year || '',
-        }));
-    } catch (e) {
-        console.warn('[MULTIMEDIA.io] Error Comic Vine recommendations:', e);
-        return [];
+        const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) data = await res.json();
+    } catch (e) {}
+
+    if (!data) {
+        try {
+            const res = await fetch(apiUrl);
+            if (res.ok) data = await res.json();
+        } catch (e) { return []; }
     }
+
+    if (!data) return [];
+    return (data.results || []).filter(r => r.name).slice(0, 10).map(r => ({
+        titulo: r.name || '',
+        portada: r.image?.super_url || r.image?.medium_url || r.image?.original_url || r.image?.thumb_url || '',
+        genero: '',
+        anio: r.start_year || '',
+    }));
 }
 
 async function fetchTMDBRecommendations(genreName, page = 1) {

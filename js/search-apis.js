@@ -110,37 +110,41 @@ const SearchAPIs = (() => {
         if (!key) return [];
 
         const apiUrl = `https://comicvine.gamespot.com/api/search/?api_key=${encodeURIComponent(key)}&format=json&resources=volume&query=${encodeURIComponent(query)}`;
-        const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
 
+        let data = null;
         try {
-            const res = await fetch(url, { signal: abortController?.signal });
-            if (!res.ok) return [];
-            const json = await res.json();
-            const results = json.results || [];
-
-            const byName = {};
-            results.filter(r => r.name).forEach(r => {
-                if (!byName[r.name] || (r.start_year || 9999) < (byName[r.name].start_year || 9999)) {
-                    byName[r.name] = r;
-                }
-            });
-
-            return Object.values(byName).slice(0, MAX_RESULTS).map(r => ({
-                titulo: r.name || '',
-                portada: r.image?.super_url || r.image?.medium_url || r.image?.original_url || r.image?.thumb_url || '',
-                genero: '',
-                anio: r.start_year || '',
-                totales: r.count_of_issues || 0,
-                subtipo: 'Comic',
-                plataforma: r.publisher?.name || '',
-                sinopsis: '',
-                apiStatus: 'Por emitir',
-                _comicvineId: r.id,
-            }));
+            const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
+            const res = await fetch(proxyUrl, { signal: abortController?.signal });
+            if (res.ok) data = await res.json();
         } catch (e) {
-            console.warn('[MULTIMEDIA.io] Error Comic Vine:', e);
-            return [];
+            console.warn('[MULTIMEDIA.io] Comic Vine proxy failed, trying direct:', e.message);
         }
+
+        if (!data) {
+            try {
+                const res = await fetch(apiUrl, { signal: abortController?.signal });
+                if (res.ok) data = await res.json();
+            } catch (e) {
+                console.warn('[MULTIMEDIA.io] Comic Vine direct failed:', e.message);
+                return [];
+            }
+        }
+
+        if (!data) return [];
+        const results = data.results || [];
+
+        return results.filter(r => r.name).slice(0, MAX_RESULTS).map(r => ({
+            titulo: r.name || '',
+            portada: r.image?.super_url || r.image?.medium_url || r.image?.original_url || r.image?.thumb_url || '',
+            genero: '',
+            anio: r.start_year || '',
+            totales: r.count_of_issues || 0,
+            subtipo: 'Comic',
+            plataforma: r.publisher?.name || '',
+            sinopsis: '',
+            apiStatus: 'Por emitir',
+            _comicvineId: r.id,
+        }));
     }
 
     // --- TMDB (Películas / Series) ---
