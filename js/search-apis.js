@@ -110,7 +110,7 @@ const SearchAPIs = (() => {
         if (!key) return [];
 
         const apiUrl = `https://comicvine.gamespot.com/api/search/?api_key=${encodeURIComponent(key)}&format=json&resources=volume&query=${encodeURIComponent(query)}`;
-        const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
+        const url = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(apiUrl)}`;
 
         try {
             const res = await fetch(url, { signal: abortController?.signal });
