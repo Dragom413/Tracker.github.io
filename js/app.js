@@ -1169,10 +1169,10 @@ async function fetchComicVineRecommendations(query, page = 1) {
     if (!key) return [];
 
     const apiUrl = `https://comicvine.gamespot.com/api/search/?api_key=${encodeURIComponent(key)}&format=json&resources=volume&query=${encodeURIComponent(query)}&page=${page}`;
-    const proxyUrl = `/api/proxy?url=${encodeURIComponent(apiUrl)}`;
+    const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
 
     try {
-        const res = await fetch(proxyUrl);
+        const res = await fetch(url);
         if (!res.ok) return [];
         const data = await res.json();
         return (data.results || []).filter(r => r.name).slice(0, 10).map(r => ({

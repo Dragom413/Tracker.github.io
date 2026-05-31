@@ -110,10 +110,10 @@ const SearchAPIs = (() => {
         if (!key) return [];
 
         const apiUrl = `https://comicvine.gamespot.com/api/search/?api_key=${encodeURIComponent(key)}&format=json&resources=volume&query=${encodeURIComponent(query)}`;
-        const proxyUrl = `/api/proxy?url=${encodeURIComponent(apiUrl)}`;
+        const url = `https://corsproxy.io/?url=${encodeURIComponent(apiUrl)}`;
 
         try {
-            const res = await fetch(proxyUrl, { signal: abortController?.signal });
+            const res = await fetch(url, { signal: abortController?.signal });
             if (!res.ok) return [];
             const data = await res.json();
             const results = data.results || [];
