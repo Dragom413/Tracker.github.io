@@ -220,7 +220,7 @@ function updateStateOptions(tab) {
     
     if (tab === 'peliculas') {
         select.innerHTML = `
-            <option value="No Visto">Por ver</option>
+            <option value="Por ver">Por ver</option>
             <option value="Visto">Visto</option>
         `;
     } else if (tab === 'videojuegos') {
@@ -229,11 +229,17 @@ function updateStateOptions(tab) {
             <option value="Jugando">Jugando</option>
             <option value="Jugado">Jugado</option>
         `;
+    } else if (tab === 'comics') {
+        select.innerHTML = `
+            <option value="Por leer">Por leer</option>
+            <option value="Leyendo">Leyendo</option>
+            <option value="Leído">Leído</option>
+        `;
     } else {
         select.innerHTML = `
-            <option value="Por emitir">Por empezar / Por emitir</option>
-            <option value="En curso">En curso / Emisión</option>
-            <option value="Finalizado">Finalizado / Lanzado</option>
+            <option value="Por ver">Por ver</option>
+            <option value="Viendo">Viendo</option>
+            <option value="Visto">Visto</option>
         `;
     }
 }
@@ -299,6 +305,7 @@ window.switchTab = function(tab) {
     document.getElementById('box-stat-pendientes').classList.remove('hidden');
     document.getElementById('box-stat-completados').classList.remove('hidden');
     document.getElementById('box-stat-abandonados').classList.add('hidden');
+    document.getElementById('box-stat-pausados').classList.add('hidden');
     document.getElementById('stats-header-grid').className = "grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6";
 
     if(tab === 'home') { document.getElementById('view-home').classList.remove('hidden'); renderHomeView(); }
@@ -319,7 +326,8 @@ window.switchTab = function(tab) {
             
             document.getElementById('box-stat-vistos').classList.add('hidden');
             document.getElementById('box-stat-abandonados').classList.remove('hidden');
-            document.getElementById('stats-header-grid').className = "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6";
+            document.getElementById('box-stat-pausados').classList.remove('hidden');
+            document.getElementById('stats-header-grid').className = "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6";
 
         } else if(tab === 'peliculas') {
             plataformaContainer.classList.add('hidden');
@@ -338,7 +346,8 @@ window.switchTab = function(tab) {
             document.getElementById('form-plataforma').required = false;
             ratingContainer.className = "col-span-2";
             document.getElementById('box-stat-abandonados').classList.remove('hidden');
-            document.getElementById('stats-header-grid').className = "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6";
+            document.getElementById('box-stat-pausados').classList.remove('hidden');
+            document.getElementById('stats-header-grid').className = "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6";
         }
 
         document.getElementById('gallery-title').innerText = tab === 'comics' ? 'Mis Cómics & Mangas' : tab === 'series' ? 'Mis Series & Anime' : tab === 'peliculas' ? 'Mis Películas' : 'Mis Videojuegos';
@@ -370,7 +379,7 @@ window.toggleFormCapitulos = function() {
     if(currentTab === 'peliculas' || currentTab === 'videojuegos') return;
     const estado = document.getElementById('form-estado').value;
     const inputTotales = document.getElementById('form-totales');
-    if(estado === 'En emisión' || estado === 'Por emitir') {
+    if(estado === 'Por leer' || estado === 'Por ver') {
         inputTotales.value = 0;
         inputTotales.disabled = true;
         inputTotales.classList.add('opacity-50');
@@ -442,7 +451,7 @@ window.selectSearchResult = function(item) {
 
     if (item.apiStatus) {
         document.getElementById('form-estado').value = item.apiStatus;
-        if (item.apiStatus === 'En curso') {
+        if (item.apiStatus === 'Por leer' || item.apiStatus === 'Por ver') {
             document.getElementById('form-totales').value = 0;
         } else if (item.totales != null) {
             document.getElementById('form-totales').value = item.totales;
@@ -485,9 +494,9 @@ window.saveMedia = function(e) {
         totales = 1;
         vistos = (estado === 'Visto') ? 1 : 0;
     } else if (currentTab === 'comics' || currentTab === 'series') {
-        // BIDIRECCIONAL: Si se guardan cambios y los vistos son menores al total pero estaba finalizado
-        if (estado === 'Finalizado' && totales > 0 && vistos < totales) {
-            estado = 'En curso';
+        if ((currentTab === 'comics' && estado === 'Leído' && totales > 0 && vistos < totales) ||
+            (currentTab === 'series' && estado === 'Visto' && totales > 0 && vistos < totales)) {
+            estado = currentTab === 'comics' ? 'Leyendo' : 'Viendo';
         }
     }
 
@@ -523,12 +532,31 @@ window.toggleAbandonado = function(id) {
         if (currentTab === 'videojuegos') {
             item.estado = 'Por Jugar';
         } else if (currentTab === 'peliculas') {
-            item.estado = 'No Visto';
+            item.estado = 'Por ver';
+        } else if (currentTab === 'comics') {
+            item.estado = 'Leyendo';
         } else {
-            item.estado = 'En curso';
+            item.estado = 'Viendo';
         }
     } else {
         item.estado = 'Abandonado';
+    }
+    window.saveToStorage();
+};
+
+window.togglePausado = function(id) {
+    const item = mediaData[currentTab].find(i => i.id === id);
+    if (!item) return;
+    if (item.estado === 'Pausado') {
+        if (currentTab === 'videojuegos') {
+            item.estado = 'Jugando';
+        } else if (currentTab === 'comics') {
+            item.estado = 'Leyendo';
+        } else {
+            item.estado = 'Viendo';
+        }
+    } else {
+        item.estado = 'Pausado';
     }
     window.saveToStorage();
 };
@@ -557,10 +585,10 @@ async function fetchAnilistStatus(anilistId) {
         const m = json.data?.Media;
         if (!m) return null;
         const mapStatus = (s) => {
-            if (s === 'RELEASING') return 'En curso';
-            if (s === 'FINISHED') return 'Finalizado';
-            if (s === 'HIATUS') return 'En curso';
-            return 'Por emitir';
+            if (s === 'RELEASING') return 'Por leer';
+            if (s === 'FINISHED') return 'Leído';
+            if (s === 'HIATUS') return 'Por leer';
+            return 'Por leer';
         };
         return { status: mapStatus(m.status), chapters: m.chapters || null };
     } catch (e) { return null; }
@@ -575,10 +603,10 @@ async function fetchTMDBStatus(tmdbId) {
         if (!res.ok) return null;
         const data = await res.json();
         const mapStatus = (s, inProd) => {
-            if (s === 'Returning Series' || s === 'In Production' || inProd) return 'En curso';
-            if (s === 'Ended') return 'Finalizado';
+            if (s === 'Returning Series' || s === 'In Production' || inProd) return 'Por ver';
+            if (s === 'Ended') return 'Visto';
             if (s === 'Canceled') return 'Abandonado';
-            return 'Por emitir';
+            return 'Por ver';
         };
         const total = (data.seasons || [])
             .filter(s => s.season_number > 0)
@@ -595,8 +623,10 @@ async function checkSeriesStatus() {
     let changed = false;
 
     for (const cat of ['comics', 'series']) {
+        const estadoCurso = cat === 'comics' ? 'Leyendo' : 'Viendo';
+        const estadoCompletado = cat === 'comics' ? 'Leído' : 'Visto';
         for (const item of mediaData[cat]) {
-            if (item.estado !== 'En curso' || !item.externalId) continue;
+            if (item.estado !== estadoCurso || !item.externalId) continue;
 
             let result = null;
             if (cat === 'comics') {
@@ -605,8 +635,8 @@ async function checkSeriesStatus() {
                 result = await fetchTMDBStatus(Number(item.externalId));
             }
 
-            if (result && result.status === 'Finalizado') {
-                item.estado = 'Finalizado';
+            if (result && (result.status === 'Leído' || result.status === 'Visto')) {
+                item.estado = estadoCompletado;
                 if (cat === 'comics' && result.chapters) item.totales = result.chapters;
                 if (cat === 'series' && result.episodes) item.totales = result.episodes;
                 changed = true;
@@ -628,7 +658,7 @@ window.incrementCapitulo = function(id, forceCategory = null) {
     const item = mediaData[cat].find(i => i.id === id);
     if(!item) return;
 
-    if (item.estado === 'Abandonado') return;
+    if (item.estado === 'Abandonado' || item.estado === 'Pausado') return;
 
     if (cat === 'videojuegos') {
         if (item.estado === 'Por Jugar') {
@@ -647,24 +677,27 @@ window.incrementCapitulo = function(id, forceCategory = null) {
         }
     } else if (cat === 'peliculas') {
         if (item.estado === 'Visto') {
-            item.estado = 'No Visto';
+            item.estado = 'Por ver';
             item.vistos = 0;
         } else {
             item.estado = 'Visto';
             item.vistos = 1;
         }
-    } else { 
+    } else {
+        const estadoCurso = cat === 'comics' ? 'Leyendo' : 'Viendo';
+        const estadoCompletado = cat === 'comics' ? 'Leído' : 'Visto';
+        const estadoPorEmpezar = cat === 'comics' ? 'Por leer' : 'Por ver';
         if (item.totales > 0 && item.vistos >= item.totales) {
             item.vistos = 0;
-            item.estado = 'En curso';
+            item.estado = estadoCurso;
         } else {
             item.vistos++;
-            if (item.estado === 'Por emitir') {
-                item.estado = 'En curso';
+            if (item.estado === estadoPorEmpezar) {
+                item.estado = estadoCurso;
             }
             if (item.totales > 0 && item.vistos >= item.totales) {
                 item.vistos = item.totales;
-                item.estado = 'Finalizado';
+                item.estado = estadoCompletado;
             }
         }
     }
@@ -708,6 +741,7 @@ function renderHomeView() {
         const box = containers[cat]; box.innerHTML = '';
         const activeList = mediaData[cat].filter(item => {
             if(cat === 'videojuegos') return item.estado === 'Jugando';
+            if (item.estado === 'Pausado' || item.estado === 'Abandonado') return false;
             const completado = item.totales > 0 && item.vistos >= item.totales;
             return !completado && item.vistos > 0;
         });
@@ -724,18 +758,20 @@ function renderHomeView() {
             
             let actionBtnText = voc.accion;
             if (item.estado === 'Abandonado') actionBtnText = '🚫 Abandonado';
+            else if (item.estado === 'Pausado') actionBtnText = '⏸️ Pausado';
             else if (cat === 'videojuegos' && item.estado === 'Jugando') actionBtnText = '🕹️ Jugado';
 
             const div = document.createElement('div');
             div.className = UI.homeItem;
-            const isAbandonedHome = item.estado === 'Abandonado';
+            const isBlockedHome = item.estado === 'Abandonado' || item.estado === 'Pausado';
+            const blockColor = item.estado === 'Abandonado' ? 'bg-rose-100 dark:bg-rose-950 text-rose-400 border border-rose-200 dark:border-rose-900' : 'bg-amber-100 dark:bg-amber-950 text-amber-500 border border-amber-200 dark:border-amber-900';
             div.innerHTML = `
                 <img src="${item.portada}" class="w-10 h-14 object-cover rounded-md ${UI.imgPlaceholder} shrink-0">
                 <div class="flex-1 min-w-0">
                     <h4 class="text-xs font-bold ${UI.textPrimary} truncate" title="${item.titulo}">${item.titulo}</h4>
                     <div class="flex items-center gap-2 mt-1">${platform}<p class="text-[10px] ${UI.textMuted} font-mono">${labelInfo}</p></div>
-                    ${isAbandonedHome
-                        ? `<button class="mt-2 w-full bg-rose-100 dark:bg-rose-950 text-rose-400 border border-rose-200 dark:border-rose-900 text-[10px] py-1 rounded-lg font-mono cursor-not-allowed opacity-60">${actionBtnText}</button>`
+                    ${isBlockedHome
+                        ? `<button class="mt-2 w-full ${blockColor} text-[10px] py-1 rounded-lg font-mono cursor-not-allowed opacity-60">${actionBtnText}</button>`
                         : `<button onclick="incrementCapitulo(${item.id}, '${cat}')" class="mt-2 w-full ${UI.btnGhost} text-[10px] py-1 rounded-lg font-mono transition cursor-pointer">${actionBtnText}</button>`
                     }
                 </div>
@@ -750,12 +786,13 @@ window.renderCollection = function() {
     const rawList = mediaData[currentTab] || []; 
     const voc = vocabulary[currentTab];
     
-    let statVistos = 0, statLeyendo = 0, statPendientes = 0, statCompletados = 0, statAbandonados = 0;
+    let statVistos = 0, statLeyendo = 0, statPendientes = 0, statCompletados = 0, statAbandonados = 0, statPausados = 0;
     rawList.forEach(item => {
         if (currentTab === 'peliculas') {
             if (item.estado === 'Visto') statCompletados++; else statLeyendo++; 
         } else if (currentTab === 'videojuegos') {
             if (item.estado === 'Abandonado') statAbandonados++;
+            else if (item.estado === 'Pausado') statPausados++;
             else if (item.estado === 'Por Jugar') statPendientes++; 
             else if (item.estado === 'Jugando') statLeyendo++; 
             else statCompletados++;
@@ -763,9 +800,12 @@ window.renderCollection = function() {
         } else {
             statVistos += item.vistos;
             if (item.estado === 'Abandonado') { statAbandonados++; return; }
-            if (item.totales > 0 && item.vistos >= item.totales) {
+            if (item.estado === 'Pausado') { statPausados++; return; }
+            if (item.estado === 'Leído' || item.estado === 'Visto') {
                 statCompletados++;
-            } else if (item.vistos > 0) {
+            } else if (item.totales > 0 && item.vistos >= item.totales) {
+                statCompletados++;
+            } else if (item.estado === 'Leyendo' || item.estado === 'Viendo' || item.vistos > 0) {
                 statLeyendo++;
             } else {
                 statPendientes++;
@@ -777,6 +817,7 @@ window.renderCollection = function() {
     document.getElementById('stat-pendientes').innerText = statPendientes;
     document.getElementById('stat-completados').innerText = statCompletados;
     document.getElementById('stat-abandonados').innerText = statAbandonados;
+    document.getElementById('stat-pausados').innerText = statPausados;
 
     const fSearch = document.getElementById('filter-search').value.toLowerCase();
     const fEstado = document.getElementById('filter-estado').value;
@@ -815,7 +856,18 @@ window.renderCollection = function() {
             if (fSort === 'anio-asc') return (parseInt(a.anio) || 0) - (parseInt(b.anio) || 0);
             if (fSort === 'anio-desc') return (parseInt(b.anio) || 0) - (parseInt(a.anio) || 0);
             if (fSort === 'estado') {
-                const order = { 'En curso': 0, 'Jugando': 1, 'Por Jugar': 2, 'No Visto': 3, 'Por emitir': 4, 'Finalizado': 5, 'Visto': 6, 'Jugado': 7, 'Abandonado': 8 };
+                let order;
+                if (currentTab === 'comics') {
+                    order = { 'Por leer': 0, 'Leyendo': 1, 'Leído': 2, 'Pausado': 3, 'Abandonado': 4 };
+                } else if (currentTab === 'series') {
+                    order = { 'Por ver': 0, 'Viendo': 1, 'Visto': 2, 'Pausado': 3, 'Abandonado': 4 };
+                } else if (currentTab === 'peliculas') {
+                    order = { 'Por ver': 0, 'Visto': 1 };
+                } else if (currentTab === 'videojuegos') {
+                    order = { 'Por Jugar': 0, 'Jugando': 1, 'Jugado': 2, 'Pausado': 3, 'Abandonado': 4 };
+                } else {
+                    order = {};
+                }
                 return (order[a.estado] ?? 99) - (order[b.estado] ?? 99);
             }
             return 0;
@@ -832,12 +884,16 @@ window.renderCollection = function() {
         } else if (currentTab === 'videojuegos') {
             if (item.estado === 'Por Jugar') { tagEstado = 'Por Jugar'; colorTag = 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'; }
             else if (item.estado === 'Jugando') { tagEstado = 'Jugando'; colorTag = 'bg-amber-500 text-slate-950 font-bold'; }
+            else if (item.estado === 'Pausado') { tagEstado = 'Pausado'; colorTag = 'bg-amber-700 text-white'; }
             else if (item.estado === 'Abandonado') { tagEstado = 'Abandonado'; colorTag = 'bg-rose-600 text-white'; }
             else { tagEstado = 'Jugado'; colorTag = 'bg-purple-600 text-white'; }
         } else {
             if (item.totales > 0 && item.vistos >= item.totales) { 
                 tagEstado = voc.completado; 
                 colorTag = 'bg-purple-600'; 
+            } else if (item.estado === 'Pausado') { 
+                tagEstado = 'Pausado'; 
+                colorTag = 'bg-amber-700 text-white'; 
             } else if (item.estado === 'Abandonado') { 
                 tagEstado = 'Abandonado'; 
                 colorTag = 'bg-rose-600 text-white'; 
@@ -863,6 +919,8 @@ window.renderCollection = function() {
         let actionBtnText = voc.accion;
         if (item.estado === 'Abandonado') {
             actionBtnText = '🚫 Abandonado';
+        } else if (item.estado === 'Pausado') {
+            actionBtnText = '⏸️ Pausado';
         } else if(currentTab === 'videojuegos' && item.estado === 'Por Jugar') {
             actionBtnText = '🎮 Empezar Juego';
         } else if(currentTab === 'videojuegos' && item.estado === 'Jugando') {
@@ -876,8 +934,9 @@ window.renderCollection = function() {
         }
 
         const isAbandonado = item.estado === 'Abandonado';
-        let actionBtn = isAbandonado
-            ? `<button class="mt-2 w-full bg-rose-100 dark:bg-rose-950 text-rose-400 border border-rose-200 dark:border-rose-900 font-medium text-[11px] py-1.5 rounded-xl transition font-mono cursor-not-allowed opacity-60">${actionBtnText}</button>`
+        const isPausado = item.estado === 'Pausado';
+        let actionBtn = (isAbandonado || isPausado)
+            ? `<button class="mt-2 w-full ${isAbandonado ? 'bg-rose-100 dark:bg-rose-950 text-rose-400 border border-rose-200 dark:border-rose-900' : 'bg-amber-100 dark:bg-amber-950 text-amber-500 border border-amber-200 dark:border-amber-900'} font-medium text-[11px] py-1.5 rounded-xl transition font-mono cursor-not-allowed opacity-60">${actionBtnText}</button>`
             : `<button onclick="incrementCapitulo(${item.id})" class="mt-2 w-full ${UI.btnGhost} font-medium text-[11px] py-1.5 rounded-xl transition font-mono cursor-pointer">${actionBtnText}</button>`;
 
         let footerInfo = '';
@@ -905,10 +964,13 @@ window.renderCollection = function() {
                         <button onclick="deleteMedia(${item.id})" class="flex-1 py-1.5 ${UI.btnSurface} hover:bg-rose-600 hover:text-white rounded-xl text-[11px] font-semibold text-rose-500 cursor-pointer">Borrar</button>
                     </div>
                     <button onclick="toggleFavorito(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl ${favActive} cursor-pointer">❤️ Favorito</button>
-                    ${currentTab !== 'peliculas' ? (item.estado !== 'Abandonado' 
-                        ? `<button onclick="toggleAbandonado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl text-rose-400 cursor-pointer">🚫 Abandonar</button>`
-                        : `<button onclick="toggleAbandonado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl text-emerald-400 cursor-pointer">▶️ Reanudar</button>`
-                    ) : ''}
+                    ${currentTab !== 'peliculas' ? `
+                        <button onclick="togglePausado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl ${item.estado === 'Pausado' ? 'text-emerald-400' : 'text-amber-500'} cursor-pointer">${item.estado === 'Pausado' ? '▶️ Reanudar' : '⏸️ Pausar'}</button>
+                        ${item.estado !== 'Abandonado' 
+                            ? `<button onclick="toggleAbandonado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl text-rose-400 cursor-pointer">🚫 Abandonar</button>`
+                            : `<button onclick="toggleAbandonado(${item.id})" class="w-full py-1.5 bg-slate-200 dark:bg-slate-800 text-[11px] font-bold rounded-xl text-emerald-400 cursor-pointer">▶️ Reanudar</button>`
+                        }
+                    ` : ''}
                 </div>
             </div>
             <div class="p-3 flex flex-col justify-between flex-1 gap-1">
@@ -972,7 +1034,7 @@ function renderListsView() {
 function renderStats() {
     const list = mediaData[currentStatsSubTab] || [];
     let generoMap = {}; let subtipoMap = {}; let anioMap = {};
-    let estadoCounts = { 'En Curso': 0, 'Completados': 0, 'Pendientes': 0, 'Abandonados': 0 };
+    let estadoCounts = { 'En Curso': 0, 'Completados': 0, 'Pendientes': 0, 'Abandonados': 0, 'Pausados': 0 };
     
     let starLabels = ['0.5', '1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5'];
     let ratingMap = { '0.5': 0, '1': 0, '1.5': 0, '2': 0, '2.5': 0, '3': 0, '3.5': 0, '4': 0, '4.5': 0, '5': 0 };
@@ -1003,11 +1065,15 @@ function renderStats() {
         } else if (currentStatsSubTab === 'videojuegos') {
             if (item.estado === 'Por Jugar') estadoCounts['Pendientes']++;
             else if (item.estado === 'Jugando') estadoCounts['En Curso']++;
+            else if (item.estado === 'Pausado') estadoCounts['Pausados']++;
+            else if (item.estado === 'Abandonado') estadoCounts['Abandonados']++;
             else estadoCounts['Completados']++;
         } else {
             if (item.estado === 'Abandonado') { estadoCounts['Abandonados']++; }
+            else if (item.estado === 'Pausado') { estadoCounts['Pausados']++; }
             else if (item.totales > 0 && item.vistos >= item.totales) estadoCounts['Completados']++;
-            else if (item.estado === 'En curso' || item.vistos > 0) estadoCounts['En Curso']++;
+            else if (item.estado === 'Leído' || item.estado === 'Visto') estadoCounts['Completados']++;
+            else if (item.estado === 'Leyendo' || item.estado === 'Viendo' || item.vistos > 0) estadoCounts['En Curso']++;
             else estadoCounts['Pendientes']++;
         }
 
@@ -1047,7 +1113,7 @@ function renderStats() {
     const labelEstadoCurso = currentStatsSubTab === 'peliculas' ? 'Por ver' : 'En Curso';
     chartE = new Chart(document.getElementById('chartEstado'), {
         type: 'bar',
-        data: { labels: [labelEstadoCurso, 'Completados', 'Pendientes', 'Abandonados'], datasets: [{ data: [estadoCounts['En Curso'], estadoCounts['Completados'], estadoCounts['Pendientes'], estadoCounts['Abandonados']], backgroundColor: ['#3b82f6', '#a855f7', '#64748b', '#e11d48'], borderRadius: 6 }] },
+        data: { labels: [labelEstadoCurso, 'Completados', 'Pendientes', 'Pausados', 'Abandonados'], datasets: [{ data: [estadoCounts['En Curso'], estadoCounts['Completados'], estadoCounts['Pendientes'], estadoCounts['Pausados'], estadoCounts['Abandonados']], backgroundColor: ['#3b82f6', '#a855f7', '#64748b', '#f59e0b', '#e11d48'], borderRadius: 6 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: barScaleOpts, plugins: { legend: { display: false } } }
     });
 
@@ -1432,12 +1498,12 @@ window.addRecommendation = async function(titulo, category, portada, genero, ani
     }
 
     const defaultStates = {
-        comics: 'Por emitir',
-        series: 'Por emitir',
-        peliculas: 'No Visto',
+        comics: 'Por leer',
+        series: 'Por ver',
+        peliculas: 'Por ver',
         videojuegos: 'Por Jugar',
     };
-    const defaultState = defaultStates[actualCategory] || 'Por emitir';
+    const defaultState = defaultStates[actualCategory] || 'Por leer';
 
     if (!confirm(`¿Añadir "${titulo}" a ${actualCategory}?\nEstado: ${defaultState}`)) return;
 
@@ -1501,7 +1567,7 @@ window.addRecommendation = async function(titulo, category, portada, genero, ani
 
     mediaData[actualCategory].push(newItem);
     window.saveToStorage();
-    const totalesInfo = totales > 0 ? ` (${totales} ${actualCategory === 'comics' ? 'capítulos' : 'episodios'})` : ' (en emisión)';
+    const totalesInfo = totales > 0 ? ` (${totales} ${actualCategory === 'comics' ? 'capítulos' : 'episodios'})` : ' (sin total conocido)';
     alert(`"${titulo}" añadido a ${actualCategory} como "${defaultState}"${actualCategory === 'comics' || actualCategory === 'series' ? totalesInfo : ''}.`);
 };
 

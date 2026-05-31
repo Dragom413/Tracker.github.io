@@ -10,10 +10,10 @@ const SearchAPIs = (() => {
     const MAX_RESULTS = 8;
 
     const mapStatus = (s) => {
-        if (s === 'RELEASING') return 'En curso';
-        if (s === 'FINISHED') return 'Finalizado';
-        if (s === 'HIATUS') return 'En curso';
-        return 'Por emitir';
+        if (s === 'RELEASING') return 'Por leer';
+        if (s === 'FINISHED') return 'Leído';
+        if (s === 'HIATUS') return 'Por leer';
+        return 'Por leer';
     };
 
     // --- Anilist (Manga) ---
@@ -127,7 +127,7 @@ const SearchAPIs = (() => {
                 subtipo: 'Comic',
                 plataforma: r.publisher?.name || '',
                 sinopsis: '',
-                apiStatus: 'Por emitir',
+                apiStatus: 'Por leer',
                 _comicvineId: r.id,
             }));
         } catch (e) {
@@ -168,10 +168,10 @@ const SearchAPIs = (() => {
         const results = (json.results || []).slice(0, MAX_RESULTS);
 
         const mapTMDBStatus = (s, inProd) => {
-            if (s === 'Returning Series' || s === 'In Production' || inProd) return 'En curso';
-            if (s === 'Ended') return 'Finalizado';
+            if (s === 'Returning Series' || s === 'In Production' || inProd) return 'Por ver';
+            if (s === 'Ended') return 'Visto';
             if (s === 'Canceled') return 'Abandonado';
-            return 'Por emitir';
+            return 'Por ver';
         };
 
         const mapped = results.map(r => ({
@@ -195,7 +195,7 @@ const SearchAPIs = (() => {
             mapped.forEach((r, i) => {
                 if (details[i]) {
                     r.apiStatus = mapTMDBStatus(details[i].status, details[i].inProduction);
-                    if (r.apiStatus === 'En curso') {
+                    if (r.apiStatus === 'Por ver') {
                         r.totales = 0;
                     } else {
                         r.totales = details[i].episodes;
