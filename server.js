@@ -2,7 +2,6 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const url = require('url');
 
 const ROOT = __dirname;
 const MIME = {
@@ -50,7 +49,7 @@ function proxyRequest(targetUrl, headers, res) {
 }
 
 const server = http.createServer((req, res) => {
-    const parsedUrl = url.parse(req.url, true);
+    const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
     // CORS preflight
     if (req.method === 'OPTIONS') {
@@ -65,16 +64,16 @@ const server = http.createServer((req, res) => {
 
     // Proxy route
     if (parsedUrl.pathname === '/api/proxy') {
-        const targetUrl = parsedUrl.query.url;
+        const targetUrl = parsedUrl.searchParams.get('url');
         if (!targetUrl) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Missing url parameter' }));
             return;
         }
         try {
-        const auth = req.headers['authorization'] || '';
-        const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-        proxyRequest(targetUrl, { 'Authorization': auth, 'User-Agent': userAgent }, res);
+            const auth = req.headers['authorization'] || '';
+            const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+            proxyRequest(targetUrl, { 'Authorization': auth, 'User-Agent': userAgent }, res);
         } catch (e) {
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: e.message }));
