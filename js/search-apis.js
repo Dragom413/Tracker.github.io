@@ -195,11 +195,7 @@ const SearchAPIs = (() => {
             mapped.forEach((r, i) => {
                 if (details[i]) {
                     r.apiStatus = mapTMDBStatus(details[i].status, details[i].inProduction);
-                    if (r.apiStatus === 'Por ver') {
-                        r.totales = 0;
-                    } else {
-                        r.totales = details[i].episodes;
-                    }
+                    r.totales = details[i].episodes;
                 }
             });
         }

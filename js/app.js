@@ -376,17 +376,7 @@ window.switchStatsSubTab = function(subTab) {
 };
 
 window.toggleFormCapitulos = function() {
-    if(currentTab === 'peliculas' || currentTab === 'videojuegos') return;
-    const estado = document.getElementById('form-estado').value;
-    const inputTotales = document.getElementById('form-totales');
-    if(estado === 'Por leer' || estado === 'Por ver') {
-        inputTotales.value = 0;
-        inputTotales.disabled = true;
-        inputTotales.classList.add('opacity-50');
-    } else {
-        inputTotales.disabled = false;
-        inputTotales.classList.remove('opacity-50');
-    }
+    // Siempre habilitado: Por leer/Por ver no implica emisión, la obra puede estar terminada
 };
 
 window.openModal = function(mode, id = null) {
@@ -451,9 +441,7 @@ window.selectSearchResult = function(item) {
 
     if (item.apiStatus) {
         document.getElementById('form-estado').value = item.apiStatus;
-        if (item.apiStatus === 'Por leer' || item.apiStatus === 'Por ver') {
-            document.getElementById('form-totales').value = 0;
-        } else if (item.totales != null) {
+        if (item.totales != null) {
             document.getElementById('form-totales').value = item.totales;
         }
     } else if (item.totales != null) {
