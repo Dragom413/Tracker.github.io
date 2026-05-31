@@ -228,18 +228,24 @@ function updateStateOptions(tab) {
             <option value="Por Jugar">Por Jugar</option>
             <option value="Jugando">Jugando</option>
             <option value="Jugado">Jugado</option>
+            <option value="Pausado">Pausado</option>
+            <option value="Abandonado">Abandonado</option>
         `;
     } else if (tab === 'comics') {
         select.innerHTML = `
             <option value="Por leer">Por leer</option>
             <option value="Leyendo">Leyendo</option>
             <option value="Leído">Leído</option>
+            <option value="Pausado">Pausado</option>
+            <option value="Abandonado">Abandonado</option>
         `;
     } else {
         select.innerHTML = `
             <option value="Por ver">Por ver</option>
             <option value="Viendo">Viendo</option>
             <option value="Visto">Visto</option>
+            <option value="Pausado">Pausado</option>
+            <option value="Abandonado">Abandonado</option>
         `;
     }
 }
