@@ -849,6 +849,7 @@ window.renderCollection = function() {
             if (fSort === 'nombre-desc') return b.titulo.localeCompare(a.titulo);
             if (fSort === 'anio-asc') return (parseInt(a.anio) || 0) - (parseInt(b.anio) || 0);
             if (fSort === 'anio-desc') return (parseInt(b.anio) || 0) - (parseInt(a.anio) || 0);
+            if (fSort === 'rating-desc') return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
             if (fSort === 'estado') {
                 let order;
                 if (currentTab === 'comics') {
